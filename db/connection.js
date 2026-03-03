@@ -2,7 +2,7 @@ import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.resolve('./config/.env') });
+dotenv.config({ path: path.resolve('./.env') });
 
 export const sequelize = new Sequelize(process.env.PG_URI, {
   dialect: 'postgres',
