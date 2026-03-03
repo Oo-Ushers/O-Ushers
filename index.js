@@ -5,8 +5,6 @@ import cors from 'cors';
 import { initApp } from './src/initapp.js';
 import { fileURLToPath } from 'url';
 
-import ServerlessHttp from 'serverless-http';
-
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -33,5 +31,19 @@ app.get('/', (req, res) => {
 });
 
 initApp(app, express);
-export const handler = ServerlessHttp(app);
+
+// In production, export as serverless function for Vercel
+// In dev, start the Express server normally
+let handler;
+if (process.env.APP_ENV === 'prod') {
+  const ServerlessHttp = (await import('serverless-http')).default;
+  handler = ServerlessHttp(app);
+} else {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
+  });
+}
+
+export { handler };
 export default app;

@@ -14,13 +14,6 @@ dotenv.config({ path: path.resolve('./config/.env') });
 export const initApp = (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
-  const port = process.env.PORT || 3000;
-  if (process.env.NODE_ENV !== 'production') {
-    app.listen(port, () => {
-      // eslint-disable-next-line no-console
-      console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
-    });
-  }
   connectDB();
 
   app.get('/verify/:token', async (req, res) => {
