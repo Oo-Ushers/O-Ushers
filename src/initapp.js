@@ -4,34 +4,30 @@ import { connectDB } from '../db/connection.js';
 import { verifyToken } from './utils/token.js';
 import { verificationSuccessTemplate } from './utils/htmlTemplate.js';
 import { globalErrorHandler } from './utils/appError.js';
-import * as allRouters from './index.js'
+// Routes will be imported here as they are created
+// import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
-import { log } from 'console';
+
 import { status } from './utils/constant/enums.js';
 
-
-dotenv.config({ path: path.resolve('./config/.env') })
+dotenv.config({ path: path.resolve('./config/.env') });
 export const initApp = (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
   const port = process.env.PORT || 3000;
   if (process.env.NODE_ENV !== 'production') {
     app.listen(port, () => {
+      // eslint-disable-next-line no-console
       console.log(`Server is running on port ${port}`);
     });
   }
   connectDB();
 
-
   app.get('/verify/:token', async (req, res) => {
     try {
-
       const payload = verifyToken({ token: req.params.token });
 
-      const result = await User.findOneAndUpdate(
-        { email: payload.email },
-        { status: status.VERIFIED }
-      );
+      await User.update({ status: status.VERIFIED }, { where: { email: payload.email } });
 
       // Send the HTML verification success page instead of JSON
       res.status(200).send(verificationSuccessTemplate());
@@ -186,20 +182,9 @@ export const initApp = (app, express) => {
   </body>
   </html>
 `);
-
     }
   });
 
-
-
-
-
-
-//app.use('/user', allRouters.userRouter)
+  //app.use('/user', allRouters.userRouter)
   app.use(globalErrorHandler);
-
-
-
-
-}
-
+};

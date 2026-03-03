@@ -1,14 +1,25 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-import path from "path";
+import { Sequelize } from 'sequelize';
+import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config({ path: path.resolve('./config/.env') })
-export const connectDB = ()=>{
-    mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("DB connected successfully");
-    })
-    .catch((error) => {
-        console.error("DB connection error:", error);
-    });
-}
+dotenv.config({ path: path.resolve('./config/.env') });
+
+export const sequelize = new Sequelize(process.env.PG_URI, {
+  dialect: 'postgres',
+  logging: false,
+  dialectOptions: {
+    ssl: process.env.PG_SSL === 'true' ? { require: true, rejectUnauthorized: false } : false,
+  },
+});
+
+export const connectDB = async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync();
+    // eslint-disable-next-line no-console
+    console.log('PostgreSQL connected & synced successfully');
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('DB connection error:', error);
+  }
+};

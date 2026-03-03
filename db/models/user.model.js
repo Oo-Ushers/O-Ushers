@@ -1,30 +1,49 @@
-import { model, Schema } from "mongoose";
-import { status } from "../../src/utils/constant/enums.js";
+import { DataTypes } from 'sequelize';
+import { sequelize } from '../connection.js';
+import { status } from '../../src/utils/constant/enums.js';
 
+export const User = sequelize.define(
+  'User',
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    userName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      set(value) {
+        this.setDataValue('email', value.toLowerCase().trim());
+      },
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: status.PENDING,
+      validate: {
+        isIn: [Object.values(status)],
+      },
+    },
+  },
+  {
+    timestamps: true,
+    tableName: 'users',
+  },
+);
 
-const userSchema = new Schema({
-    userName: { type: String, required: true,unique: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true,select:false },
-    status: { type: String, enum: Object.values(status), default: status.PENDING },
-
-}, { timestamps: true });
-
-
-
-// ✅ Hide password from JSON & Object responses
-userSchema.set('toJSON', {
-  transform: function (doc, ret) {
-    delete ret.password;
-    return ret;
-  }
-});
-
-userSchema.set('toObject', {
-  transform: function (doc, ret) {
-    delete ret.password;
-    return ret;
-  }
-});
-
-export const User = model('User', userSchema);
+// ✅ Hide password from JSON responses
+User.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  delete values.password;
+  return values;
+};
