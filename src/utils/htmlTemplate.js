@@ -269,10 +269,6 @@ export const verificationSuccessTemplate = () => {
 </html>`;
 };
 
-
-
-
-
 /**
  * HTML template for new Contact-Us submissions,
  * sent to your support inbox.
@@ -459,7 +455,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
 // Example usage in your application:
 // For sending verification email: htmlTemplate(userToken)
 // For success page after verification: verificationSuccessTemplate()
-
 
 export const htmlTemplateOTP = (otp) => {
   return `<!DOCTYPE html>
