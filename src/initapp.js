@@ -10,11 +10,11 @@ import { User } from '../db/models/user.model.js';
 
 import { status } from './utils/constant/enums.js';
 
-dotenv.config({ path: path.resolve('./config/.env') });
-export const initApp = (app, express) => {
+dotenv.config({ path: path.resolve('./.env') });
+export const initApp = async (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
-  connectDB();
+  await connectDB();
 
   app.get('/verify/:token', async (req, res) => {
     try {
