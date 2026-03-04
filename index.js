@@ -6,6 +6,7 @@ import { initApp } from './src/initapp.js';
 import { fileURLToPath } from 'url';
 import ServerlessHttp from 'serverless-http';
 
+
 dotenv.config();
 const app = express();
 app.use(cors());
