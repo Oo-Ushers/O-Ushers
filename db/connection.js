@@ -1,4 +1,5 @@
 import { Sequelize } from 'sequelize';
+import pg from 'pg'; // Explicit import so Vercel's bundler includes it
 import dotenv from 'dotenv';
 import path from 'path';
 
