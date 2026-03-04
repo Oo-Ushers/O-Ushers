@@ -32,16 +32,24 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'welcome.html'));
 });
 
-initApp(app, express);
+// Initialize the app (DB connection, routes, etc.)
+const readyPromise = initApp(app, express);
 
 // In dev, start the Express server normally
 if (process.env.APP_ENV !== 'prod') {
-  const port = process.env.PORT || 3000;
-  app.listen(port, () => {
-    console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
+  readyPromise.then(() => {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+      console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
+    });
   });
 }
 
-// Always export the serverless handler (Vercel needs this)
-export const handler = ServerlessHttp(app);
+// Export the serverless handler — waits for init before handling requests
+const serverless = ServerlessHttp(app);
+export const handler = async (event, context) => {
+  await readyPromise;
+  return serverless(event, context);
+};
 export default app;
+
