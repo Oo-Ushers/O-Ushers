@@ -47,26 +47,46 @@ export const User = sequelize.define(
     organizationId: {
       type: DataTypes.ARRAY(DataTypes.UUID),
       allowNull: true,
-      references: {
-        model: 'organizations',
-        key: 'id',
-      },
+      // references: {
+      //   model: 'organizations',
+      //   key: 'id',
+      // },
     },
     experience: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
     languages: {
-      type: DataTypes.ARRAY(DataTypes.ENUM(...Object.values(language))),
-      allowNull: false,
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      validate: {
+        isValidLanguage(value) {
+          if (value) {
+            const allowed = Object.values(language);
+            value.forEach((v) => {
+              if (!allowed.includes(v)) throw new Error(`Invalid language: ${v}`);
+            });
+          }
+        },
+      },
     },
     eventCategories: {
-      type: DataTypes.ARRAY(DataTypes.ENUM(...Object.values(eventCategories))),
-      allowNull: false,
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      validate: {
+        isValidCategory(value) {
+          if (value) {
+            const allowed = Object.values(eventCategories);
+            value.forEach((v) => {
+              if (!allowed.includes(v)) throw new Error(`Invalid category: ${v}`);
+            });
+          }
+        },
+      },
     },
     portfolio: {
       type: DataTypes.ARRAY(DataTypes.JSON),
-      allowNull: false,
+      allowNull: true,
     },
     // portfolio picture avatar default picture
     portfolioPicture: {

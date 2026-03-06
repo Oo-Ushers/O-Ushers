@@ -34,17 +34,15 @@ app.get('/', (req, res) => {
 // Initialize the app (DB connection, routes, etc.)
 const readyPromise = initApp(app, express);
 
-// In dev, start the Express server normally
+// In dev, start the Express server, DB connection happens in parallel
 if (process.env.APP_ENV !== 'prod') {
-  readyPromise.then(() => {
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-      console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
-    });
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
   });
 }
 
-// Export the serverless handler — waits for init before handling requests
+// For Vercel serverless: wait for init before handling requests
 const serverless = ServerlessHttp(app);
 export const handler = async (event, context) => {
   await readyPromise;
