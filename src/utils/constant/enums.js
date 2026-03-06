@@ -1,5 +1,5 @@
 export const roles = {
-  UTHER: 'uther',
+  USHER: 'usher',
   ADMIN: 'admin',
   ORGANIZER: 'organizer',
 };

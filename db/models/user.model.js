@@ -27,6 +27,9 @@ export const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
+      set(value) {
+        this.setDataValue('email', value.toLowerCase().trim());
+      },
     },
     password: {
       type: DataTypes.STRING,
@@ -43,7 +46,7 @@ export const User = sequelize.define(
     },
     organizationId: {
       type: DataTypes.ARRAY(DataTypes.UUID),
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'organizations',
         key: 'id',
