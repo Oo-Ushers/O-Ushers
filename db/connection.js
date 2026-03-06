@@ -1,4 +1,5 @@
 import { Sequelize } from 'sequelize';
+import pg from 'pg'; // Explicit import so Vercel's bundler includes it
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -21,5 +22,6 @@ export const connectDB = async () => {
     } catch (error) {
         // eslint-disable-next-line no-console
         console.error('\x1b[31m✖ DB connection error:\x1b[0m', error);
+        throw error;
     }
 };
