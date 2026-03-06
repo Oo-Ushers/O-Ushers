@@ -6,7 +6,6 @@ import { initApp } from './src/initapp.js';
 import { fileURLToPath } from 'url';
 import ServerlessHttp from 'serverless-http';
 
-
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -52,4 +51,3 @@ export const handler = async (event, context) => {
   return serverless(event, context);
 };
 export default app;
-
