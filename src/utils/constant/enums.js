@@ -1,6 +1,7 @@
 export const roles = {
-  CUSTOMER: 'customer',
+  USHER: 'usher',
   ADMIN: 'admin',
+  ORGANIZER: 'organizer',
 };
 Object.freeze(roles);
 
@@ -11,22 +12,24 @@ export const status = {
 };
 Object.freeze(status);
 
-export const CouponType = {
-  FIXED: 'fixed',
-  PERCENTAGE: 'percentage',
+export const language = {
+  ARABIC: 'arabic',
+  ENGLISH: 'english',
+  FRENCH: 'french',
+  SPANISH: 'spanish',
+  GERMAN: 'german',
+  ITALIAN: 'italian',
 };
-Object.freeze(CouponType);
+Object.freeze(language);
 
-export const orderStatus = {
-  PLACED: 'placed',
-  SHIPPED: 'shipped',
-  DELIVERED: 'delivered',
-  CANCELLED: 'cancelled',
+export const eventCategories = {
+  WEDDING: 'wedding',
+  CORPORATE: 'corporate',
+  CLUB: 'club',
+  FESTIVAL: 'festival',
+  PRIVATE_PARTY: 'private_party',
+  CONFERENCE: 'conference',
+  EXHIBITION: 'exhibition',
+  SPORT_EVENT: 'sport_event',
 };
-Object.freeze(orderStatus);
-
-export const payment = {
-  CASH: 'cash',
-  VISA: 'visa',
-};
-Object.freeze(payment);
+Object.freeze(eventCategories);
