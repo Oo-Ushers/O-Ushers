@@ -116,12 +116,48 @@
       color: #22c55e;
     }
 
+    .status-badge.online {
+      color: #22c55e;
+    }
+
+    .status-badge.offline {
+      color: #ef4444;
+    }
+
+    .status-badge.loading {
+      color: #777777;
+    }
+
     .status-dot {
       width: 8px;
       height: 8px;
       background-color: #22c55e;
       border-radius: 50%;
       animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-dot.online {
+      background-color: #22c55e;
+    }
+
+    .status-dot.offline {
+      background-color: #ef4444;
+    }
+
+    /* Spinner for loading state */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #333333;
+      border-top-color: #a855f7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     @keyframes blink {
@@ -200,23 +236,23 @@
     <div class="status-card">
       <div class="status-row">
         <span class="status-label">Server</span>
-        <span class="status-badge">
-          <span class="status-dot"></span>
+        <span class="status-badge online">
+          <span class="status-dot online"></span>
           Operational
         </span>
       </div>
       <div class="status-row">
         <span class="status-label">API</span>
-        <span class="status-badge">
-          <span class="status-dot"></span>
+        <span class="status-badge online">
+          <span class="status-dot online"></span>
           Online
         </span>
       </div>
       <div class="status-row">
         <span class="status-label">Database</span>
-        <span class="status-badge">
-          <span class="status-dot"></span>
-          Connected
+        <span id="db-status" class="status-badge loading">
+          <span class="spinner"></span>
+          Checking...
         </span>
       </div>
     </div>
@@ -224,6 +260,29 @@
     <div class="divider"></div>
     <p class="version">v1.0.0 &bull; &copy; 2026 Oo Ushers</p>
   </div>
+
+  <script>
+    async function checkDbStatus() {
+      const el = document.getElementById('db-status');
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+
+        if (data.database) {
+          el.className = 'status-badge online';
+          el.innerHTML = '<span class="status-dot online"></span> Connected';
+        } else {
+          el.className = 'status-badge offline';
+          el.innerHTML = '<span class="status-dot offline"></span> Disconnected';
+        }
+      } catch {
+        el.className = 'status-badge offline';
+        el.innerHTML = '<span class="status-dot offline"></span> Disconnected';
+      }
+    }
+
+    checkDbStatus();
+  </script>
 </body>
 
 </html>

@@ -17,7 +17,7 @@ export const connectDB = async () => {
     try {
         await sequelize.authenticate();
         await sequelize.sync({
-              alter: true
+            // alter: true
         });
         // eslint-disable-next-line no-console
         console.log('\x1b[32m✔ PostgreSQL connected & synced successfully\x1b[0m');
