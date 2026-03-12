@@ -1,6 +1,6 @@
-// import authRouter from "./modules/routes/auth.routes.js"
-// import userRouter from "./modules/user/user.routes.js";
+import authRouter from "./routers/user.router.js"
 
-export // authRouter,
-// userRouter
- {};
+
+export {
+    authRouter,
+};
