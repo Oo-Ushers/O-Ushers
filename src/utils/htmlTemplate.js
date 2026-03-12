@@ -121,8 +121,9 @@ export const verificationSuccessTemplate = () => {
   <title>Email Verified - OOUSHERS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style type="text/css">
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: Helvetica, Arial, sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
       background-color: #0f0f0f;
       margin: 0; padding: 0;
       color: #ffffff;
@@ -130,8 +131,30 @@ export const verificationSuccessTemplate = () => {
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      overflow: hidden;
     }
-    .container { max-width: 560px; width: 90%; margin: 40px auto; }
+
+    /* Animated background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.05) 40%, transparent 70%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .container { max-width: 560px; width: 90%; margin: 40px auto; position: relative; z-index: 1; }
+
     .card {
       background-color: #1e1b2e;
       border-radius: 10px;
@@ -139,22 +162,29 @@ export const verificationSuccessTemplate = () => {
       border-bottom: 3px solid #7c3aed;
       overflow: hidden;
       box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
+      animation: fadeInUp 0.8s ease-out 0.15s both;
     }
+
     .card-header { padding: 36px 24px 0; text-align: center; }
+
     .brand {
       display: inline-block;
       font-size: 26px; font-weight: 900;
       color: #7c3aed; letter-spacing: 3px;
       margin-bottom: 24px;
     }
+
     h1 { margin: 0 0 12px; font-size: 28px; font-weight: 700; color: #ffffff; }
+
     .card-body { padding: 24px; font-size: 16px; line-height: 26px; text-align: center; color: #d0d0e0; }
+
     .check-icon {
       display: block; width: 80px; height: 80px;
       margin: 0 auto 24px;
       border-radius: 50%;
       background-color: #7c3aed;
       position: relative;
+      animation: scaleIn 0.5s ease-out 0.4s both;
     }
     .check-icon:after {
       content: '';
@@ -165,6 +195,7 @@ export const verificationSuccessTemplate = () => {
       top: 50%; left: 50%;
       transform: translate(-50%, -60%) rotate(-45deg);
     }
+
     .button {
       display: inline-block;
       padding: 16px 40px;
@@ -174,8 +205,10 @@ export const verificationSuccessTemplate = () => {
       background-color: #7c3aed;
       border-radius: 6px;
       margin-top: 24px;
+      transition: background-color 0.3s ease, transform 0.2s ease;
     }
-    .button:hover { background-color: #5b21b6; }
+    .button:hover { background-color: #5b21b6; transform: translateY(-1px); }
+
     .card-footer {
       padding: 20px 24px;
       font-size: 14px;
@@ -183,6 +216,24 @@ export const verificationSuccessTemplate = () => {
       text-align: center;
       background-color: #0f0f0f;
     }
+
+    .divider {
+      width: 60px; height: 3px;
+      background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent);
+      margin: 16px auto;
+      border-radius: 2px;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
     @media screen and (max-width: 600px) { .container { width: 92%; } }
   </style>
 </head>
@@ -196,12 +247,171 @@ export const verificationSuccessTemplate = () => {
       <div class="card-body">
         <div class="check-icon"></div>
         <p>Your email address has been confirmed. Your account is now active and you can start using <strong style="color:#7c3aed;">OOUSHERS</strong>.</p>
-        <!-- ✅ Update this href to your actual login page URL -->
-        <a href="http://localhost:3000/auth/login" class="button">Continue to Login</a>
+        <div class="divider"></div>
+        <a href="https://ooushers.com/login" class="button">Continue to Login</a>
       </div>
     </div>
     <div class="card-footer">
       <p style="margin:0;">Questions? Reach us at <a href="mailto:ooushers@gmail.com" style="color:#7c3aed; text-decoration:none;">ooushers@gmail.com</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+
+// ── VERIFICATION FAILED PAGE ──────────────────────────────────────────────────
+export const verificationFailedTemplate = () => {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Verification Failed - OOUSHERS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style type="text/css">
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+      background-color: #0f0f0f;
+      margin: 0; padding: 0;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Animated background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.05) 40%, transparent 70%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    }
+
+    .container { max-width: 560px; width: 90%; margin: 40px auto; position: relative; z-index: 1; }
+
+    .card {
+      background-color: #1e1b2e;
+      border-radius: 10px;
+      border-top: 3px solid #7c3aed;
+      border-bottom: 3px solid #7c3aed;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
+      animation: fadeInUp 0.8s ease-out 0.15s both;
+    }
+
+    .card-header { padding: 36px 24px 0; text-align: center; }
+
+    .brand {
+      display: inline-block;
+      font-size: 26px; font-weight: 900;
+      color: #7c3aed; letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+
+    h1 { margin: 0 0 12px; font-size: 28px; font-weight: 700; color: #ffffff; }
+
+    .card-body {
+      padding: 24px; font-size: 16px;
+      line-height: 26px; text-align: center;
+      color: #d0d0e0;
+    }
+
+    /* Error X icon */
+    .error-icon {
+      display: block; width: 80px; height: 80px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      background-color: #7c3aed;
+      position: relative;
+      animation: scaleIn 0.5s ease-out 0.4s both;
+    }
+
+    .error-icon:before,
+    .error-icon:after {
+      content: '';
+      position: absolute;
+      width: 32px; height: 4px;
+      background-color: #ffffff;
+      top: 50%; left: 50%;
+      margin-top: -2px; margin-left: -16px;
+      border-radius: 2px;
+    }
+    .error-icon:before { transform: rotate(45deg); }
+    .error-icon:after  { transform: rotate(-45deg); }
+
+    .button {
+      display: inline-block;
+      padding: 16px 40px;
+      font-size: 16px; font-weight: bold;
+      color: #ffffff;
+      text-decoration: none;
+      background-color: #7c3aed;
+      border-radius: 6px;
+      margin-top: 24px;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .button:hover { background-color: #5b21b6; transform: translateY(-1px); }
+
+    .card-footer {
+      padding: 20px 24px;
+      font-size: 14px;
+      color: #606070;
+      text-align: center;
+      background-color: #0f0f0f;
+    }
+
+    .divider {
+      width: 60px; height: 3px;
+      background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent);
+      margin: 16px auto;
+      border-radius: 2px;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @media screen and (max-width: 600px) { .container { width: 92%; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <div class="brand">OOUSHERS</div>
+        <h1>Verification Failed</h1>
+      </div>
+      <div class="card-body">
+        <div class="error-icon"></div>
+        <p>The verification link is <strong style="color:#a855f7;">invalid</strong> or has <strong style="color:#a855f7;">expired</strong>.</p>
+        <p style="margin-top:12px; font-size:14px; color:#a0a0b0;">Please request a new verification email from your account settings.</p>
+        <div class="divider"></div>
+        <a href="https://ooushers.com/login" class="button">Return to Login</a>
+      </div>
+    </div>
+    <div class="card-footer">
+      <p style="margin:0;">Need help? Contact us at <a href="mailto:ooushers@gmail.com" style="color:#7c3aed; text-decoration:none;">ooushers@gmail.com</a></p>
     </div>
   </div>
 </body>

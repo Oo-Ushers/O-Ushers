@@ -272,3 +272,17 @@ export const resetPassword = async (req, res, next) => {
 
     return res.status(200).json({ message: 'Password updated successfully', success: true });
 };
+
+// getAllUsers
+export const getAllUsers = async (req, res, next) => {
+    const users = await User.findAll({
+        attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
+        order: [['createdAt', 'DESC']],
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: 'Users fetched successfully',
+        data: users,
+    });
+};
