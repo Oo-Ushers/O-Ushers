@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import { connectDB } from '../db/connection.js';
+import { connectDB, sequelize } from '../db/connection.js';
 import { verifyToken } from './utils/token.js';
 import { verificationSuccessTemplate, verificationFailedTemplate } from './utils/htmlTemplate.js';
 import { globalErrorHandler } from './utils/appError.js';
@@ -12,6 +12,16 @@ export const initApp = async (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
   await connectDB();
+
+  // Health check endpoint — live DB status
+  app.get('/health', async (req, res) => {
+    try {
+      await sequelize.authenticate();
+      return res.status(200).json({ server: true, database: true });
+    } catch {
+      return res.status(200).json({ server: true, database: false });
+    }
+  });
 
   app.get('/verify/:token', async (req, res) => {
     try {
