@@ -4,7 +4,6 @@ import path from 'path';
 import cors from 'cors';
 import { initApp } from './src/initapp.js';
 import { fileURLToPath } from 'url';
-import ServerlessHttp from 'serverless-http';
 
 dotenv.config();
 const app = express();
@@ -42,10 +41,11 @@ if (process.env.APP_ENV !== 'prod') {
   });
 }
 
-// For Vercel serverless: wait for init before handling requests
-const serverless = ServerlessHttp(app);
-export const handler = async (event, context) => {
+// For Vercel: @vercel/node calls the default export as a plain Node.js (req, res) handler.
+// We await readyPromise so DB is connected and all routes are registered before any request is handled.
+const handler = async (req, res) => {
   await readyPromise;
-  return serverless(event, context);
+  app(req, res);
 };
-export default app;
+
+export default handler;
