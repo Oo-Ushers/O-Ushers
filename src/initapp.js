@@ -5,11 +5,8 @@ import { verifyToken } from './utils/token.js';
 import { verificationSuccessTemplate } from './utils/htmlTemplate.js';
 import { globalErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
-// import * as allRouters from './index.js'
+import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
-
-import { status } from './utils/constant/enums.js';
-
 dotenv.config({ path: path.resolve('./.env') });
 export const initApp = async (app, express) => {
   app.use(express.static('public'));
@@ -20,7 +17,7 @@ export const initApp = async (app, express) => {
     try {
       const payload = verifyToken({ token: req.params.token });
 
-      await User.update({ status: status.VERIFIED }, { where: { email: payload.email } });
+      await User.update({ isEmailVerified: true }, { where: { email: payload.email } });
 
       // Send the HTML verification success page instead of JSON
       res.status(200).send(verificationSuccessTemplate());
@@ -178,6 +175,6 @@ export const initApp = async (app, express) => {
     }
   });
 
-  //app.use('/user', allRouters.userRouter)
+  app.use('/auth', allRouters.authRouter)
   app.use(globalErrorHandler);
 };

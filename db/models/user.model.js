@@ -92,6 +92,10 @@ export const User = sequelize.define(
     portfolioPicture: {
       type: DataTypes.JSON,
       allowNull: false,
+      defaultValue: {
+        secure_url: "https://res.cloudinary.com/dvz0zvpof/image/upload/v1727788484/Default_pfp.svg_v7dmtb.png",
+        public_id: "default_avatar"
+      }
     },
     isEmailVerified: {
       type: DataTypes.BOOLEAN,
@@ -99,6 +103,26 @@ export const User = sequelize.define(
     },
     // admin verification
     isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    otp: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    otpExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    otpAttempts: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    lastOtpRequest: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    otpVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

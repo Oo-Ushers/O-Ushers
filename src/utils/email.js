@@ -10,7 +10,7 @@ export const sendEmail = async ({ to = '', subject = '', html = '' }) => {
   });
 
   await transporter.sendMail({
-    from: '"Oo-Ushers" <[EMAIL_ADDRESS]>', // sender address
+    from: '"Oo-Ushers"', // sender address
     to, // list of receivers
     subject, // Subject line
     html, // html body
