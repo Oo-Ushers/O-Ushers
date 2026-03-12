@@ -70,8 +70,8 @@ export const htmlTemplate = (token) => {
               <table border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" bgcolor="#7c3aed" style="border-radius: 6px;">
-                    <!-- ✅ Fixed: single slash before token, no double slash -->
-                    <a href="http://localhost:3000/verify/${token}" target="_blank"
+                    <!-- ✅ Uses BASE_URL env var so the link works in dev & production -->
+                    <a href="${process.env.BASE_URL}/verify/${token}" target="_blank"
                        style="display: inline-block; padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">
                       Verify Email
                     </a>
