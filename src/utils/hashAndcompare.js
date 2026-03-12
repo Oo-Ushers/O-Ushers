@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const hashPassword = ({ password = '', saltRound = 8 }) => {
   return bcrypt.hashSync(password, saltRound);
