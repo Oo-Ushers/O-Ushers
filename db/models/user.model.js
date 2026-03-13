@@ -126,6 +126,27 @@ export const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // ── Phone (WhatsApp) verification fields ──
+    isPhoneVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    phoneOtp: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    phoneOtpExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    phoneOtpAttempts: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    lastPhoneOtpRequest: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     rate: {
       type: DataTypes.FLOAT,
       allowNull: false,

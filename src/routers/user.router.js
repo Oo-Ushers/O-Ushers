@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/appError.js";
-import { signup, login, forgetPassword, verifyOtp, resetPassword, getAllUsers } from "../controllers/user.controller.js";
+import { signup, login, forgetPassword, verifyOtp, resetPassword, getAllUsers, sendPhoneOtp, verifyPhoneOtp } from "../controllers/user.controller.js";
 import { isValid } from "../middlewares/validation.js";
 import { isAuthenticated, isAuthorized } from "../middlewares/authentication.js";
-import { signupSchema, loginSchema, forgetPasswordSchema, verifyOtpSchema, resetPasswordSchema } from "../validators/user.validator.js";
+import { signupSchema, loginSchema, forgetPasswordSchema, verifyOtpSchema, resetPasswordSchema, sendPhoneOtpSchema, verifyPhoneOtpSchema } from "../validators/user.validator.js";
 
 export const authRouter = Router();
 
@@ -14,4 +14,8 @@ authRouter.post('/forget-password', isValid(forgetPasswordSchema), asyncHandler(
 authRouter.post('/verify-otp', isValid(verifyOtpSchema), asyncHandler(verifyOtp));
 authRouter.post('/reset-password', isValid(resetPasswordSchema), asyncHandler(resetPassword));
 
-export default authRouter;
+// WhatsApp phone verification
+authRouter.post('/send-phone-otp', isValid(sendPhoneOtpSchema), asyncHandler(sendPhoneOtp));
+authRouter.post('/verify-phone-otp', isValid(verifyPhoneOtpSchema), asyncHandler(verifyPhoneOtp));
+
+export default authRouter;

@@ -39,3 +39,13 @@ export const resetPasswordSchema = joi.object({
     email: generalFields.email.required(),
     newPassword: generalFields.password
 }).required();
+
+// ── WhatsApp Phone OTP validators ──
+export const sendPhoneOtpSchema = joi.object({
+    mobileNumber: joi.string().pattern(/^(\+?\d{1,3}[- ]?)?\d{10}$/).required(),
+}).required();
+
+export const verifyPhoneOtpSchema = joi.object({
+    mobileNumber: joi.string().pattern(/^(\+?\d{1,3}[- ]?)?\d{10}$/).required(),
+    otp: joi.string().length(6).required(),
+}).required();

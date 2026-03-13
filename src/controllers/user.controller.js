@@ -7,6 +7,7 @@ import { hashPassword, comparePassword } from "../utils/hashAndcompare.js";
 import { htmlTemplate, htmlTemplateOTP } from "../utils/htmlTemplate.js";
 import { generateOTP } from "../utils/otp.js";
 import { genrateToken } from "../utils/token.js";
+import { sendWhatsAppOTP } from "../utils/whatsapp.js";
 
 // signup
 export const signup = async (req, res, next) => {
@@ -277,7 +278,7 @@ export const resetPassword = async (req, res, next) => {
 // getAllUsers
 export const getAllUsers = async (req, res, next) => {
     const users = await User.findAll({
-        attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
+        attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified', 'phoneOtp', 'phoneOtpExpiry', 'phoneOtpAttempts', 'lastPhoneOtpRequest'] },
         order: [['createdAt', 'DESC']],
     });
 
@@ -287,3 +288,157 @@ export const getAllUsers = async (req, res, next) => {
         data: users,
     });
 };
+
+// ── WhatsApp Phone Verification ─────────────────────────────────────────────
+
+// sendPhoneOtp  —  POST /auth/send-phone-otp
+export const sendPhoneOtp = async (req, res, next) => {
+    const { mobileNumber } = req.body;
+
+    // Find the user by their mobile number
+    const user = await User.findOne({ where: { mobileNumber } });
+
+    if (!user) {
+        return next(new AppError(messages.user.notfound, 404));
+    }
+
+    if (user.isPhoneVerified) {
+        return next(new AppError('Phone number is already verified', 400));
+    }
+
+    // Rate-limit: 30 seconds between requests
+    const currentTime = Date.now();
+    if (user.lastPhoneOtpRequest) {
+        const lastRequestTime = new Date(user.lastPhoneOtpRequest).getTime();
+        const elapsed = currentTime - lastRequestTime;
+        if (elapsed < 30 * 1000) {
+            const remaining = Math.ceil((30 * 1000 - elapsed) / 1000);
+            return next(
+                new AppError(`Please wait ${remaining} seconds before requesting a new OTP`, 429)
+            );
+        }
+    }
+
+    const otp = generateOTP().toString();
+
+    try {
+        await user.update({
+            phoneOtp: otp,
+            phoneOtpExpiry: new Date(currentTime + 15 * 60 * 1000), // 15 min
+            phoneOtpAttempts: 0,
+            lastPhoneOtpRequest: new Date(currentTime),
+        });
+
+        // Send the OTP via WhatsApp
+        await sendWhatsAppOTP({ to: mobileNumber, otp });
+
+        return res.status(200).json({
+            success: true,
+            message: 'OTP sent to your WhatsApp number',
+        });
+    } catch (error) {
+        // Rollback OTP on failure
+        await user.update({
+            phoneOtp: null,
+            phoneOtpExpiry: null,
+            phoneOtpAttempts: 0,
+            lastPhoneOtpRequest: null,
+        });
+        console.error('WhatsApp OTP error:', error.message);
+        return next(new AppError(`Failed to send WhatsApp OTP: ${error.message}`, 500));
+    }
+};
+
+// verifyPhoneOtp  —  POST /auth/verify-phone-otp
+export const verifyPhoneOtp = async (req, res, next) => {
+    const { mobileNumber, otp } = req.body;
+
+    const user = await User.findOne({ where: { mobileNumber } });
+    if (!user) {
+        return next(new AppError(messages.user.notfound, 404));
+    }
+
+    if (user.isPhoneVerified) {
+        return next(new AppError('Phone number is already verified', 400));
+    }
+
+    const otpString = otp.toString();
+    const storedOtp = user.phoneOtp ? user.phoneOtp.toString() : '';
+    const currentTime = Date.now();
+    const expiryTime = user.phoneOtpExpiry ? new Date(user.phoneOtpExpiry).getTime() : 0;
+
+    // Check if a valid (non-expired) OTP exists
+    if (user.phoneOtp && expiryTime > currentTime) {
+        // Wrong code?
+        if (storedOtp !== otpString) {
+            await user.increment('phoneOtpAttempts', { by: 1 });
+            await user.reload();
+
+            if (user.phoneOtpAttempts >= 3) {
+                await user.update({
+                    phoneOtp: null,
+                    phoneOtpExpiry: null,
+                    phoneOtpAttempts: 0,
+                });
+                return next(
+                    new AppError('Maximum OTP attempts exceeded. Please request a new OTP.', 403)
+                );
+            }
+
+            return next(
+                new AppError(
+                    `Invalid OTP. You have ${3 - user.phoneOtpAttempts} attempts left`,
+                    401
+                )
+            );
+        }
+
+        // Correct code — mark phone as verified
+        await user.update({
+            phoneOtpAttempts: 0,
+            phoneOtp: null,
+            phoneOtpExpiry: null,
+            isPhoneVerified: true,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Phone number verified successfully',
+        });
+    }
+
+    // OTP expired or missing — auto-resend a new one
+    const otpCreationTime = expiryTime - 15 * 60 * 1000;
+    const timeSinceLast = currentTime - otpCreationTime;
+
+    if (timeSinceLast < 30 * 1000) {
+        const remaining = Math.ceil((30 * 1000 - timeSinceLast) / 1000);
+        return next(
+            new AppError(`Please wait ${remaining} seconds before requesting a new OTP`, 429)
+        );
+    }
+
+    const newOtp = generateOTP().toString();
+    try {
+        await user.update({
+            phoneOtp: newOtp,
+            phoneOtpExpiry: new Date(currentTime + 15 * 60 * 1000),
+            phoneOtpAttempts: 0,
+            lastPhoneOtpRequest: new Date(currentTime),
+        });
+
+        await sendWhatsAppOTP({ to: mobileNumber, otp: newOtp });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Previous OTP expired or invalid. A new OTP has been sent to your WhatsApp',
+        });
+    } catch (error) {
+        await user.update({
+            phoneOtp: null,
+            phoneOtpExpiry: null,
+            phoneOtpAttempts: 0,
+        });
+        return next(new AppError('Failed to send new WhatsApp OTP', 500));
+    }
+};
