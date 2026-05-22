@@ -7,9 +7,16 @@ import { signupSchema, loginSchema, forgetPasswordSchema, verifyOtpSchema, reset
 
 export const authRouter = Router();
 
+// ── Users ────────────────────────────────────────────────────────────────
 authRouter.get('/users', isAuthenticated(), isAuthorized(['usher']), asyncHandler(getAllUsers));
+
+// ── Registration ─────────────────────────────────────────────────────────
 authRouter.post('/signup', isValid(signupSchema), asyncHandler(signup));
+
+// ── Login ────────────────────────────────────────────────────────────────
 authRouter.post('/login', isValid(loginSchema), asyncHandler(login));
+
+// ── Password Recovery ────────────────────────────────────────────────────
 authRouter.post('/forget-password', isValid(forgetPasswordSchema), asyncHandler(forgetPassword));
 authRouter.post('/verify-otp', isValid(verifyOtpSchema), asyncHandler(verifyOtp));
 authRouter.post('/reset-password', isValid(resetPasswordSchema), asyncHandler(resetPassword));

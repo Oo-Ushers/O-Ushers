@@ -7,11 +7,41 @@ import { globalErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
+
+// Swagger — pure OpenAPI spec (no JSDoc parsing)
+import swaggerUi from 'swagger-ui-express';
+import { openApiSpec } from './swagger/swagger.config.js';
+
 dotenv.config({ path: path.resolve('./.env') });
 export const initApp = async (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
   await connectDB();
+
+  // ── Swagger API Documentation ─────────────────────────────────────────
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(openApiSpec, {
+      customSiteTitle: 'O-Ushers API Docs',
+      customCss: `
+        .swagger-ui .topbar { display: none; }
+        .swagger-ui .info .title { font-size: 2rem; }
+      `,
+      swaggerOptions: {
+        docExpansion: 'list',
+        filter: true,
+        showRequestDuration: true,
+        persistAuthorization: true,
+      },
+    }),
+  );
+
+  // Serve the raw OpenAPI JSON spec
+  app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(openApiSpec);
+  });
 
   // Health check endpoint — live DB status
   app.get('/health', async (req, res) => {
@@ -40,4 +70,3 @@ export const initApp = async (app, express) => {
   app.use('/auth', allRouters.authRouter)
   app.use(globalErrorHandler);
 };
-
