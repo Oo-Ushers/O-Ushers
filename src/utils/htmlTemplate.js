@@ -1,5 +1,6 @@
-export const htmlTemplate = (token) => {
-  return `<!DOCTYPE html>
+export class HtmlTemplateService {
+  static emailConfirmation(token) {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -31,7 +32,6 @@ export const htmlTemplate = (token) => {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
           <tr>
             <td align="center" valign="top" style="padding: 36px 24px;">
-              <!-- Replace src with your actual logo URL -->
               <span style="font-family: Helvetica, Arial, sans-serif; font-size: 28px; font-weight: 900; color: #7c3aed; letter-spacing: 3px;">OOUSHERS</span>
             </td>
           </tr>
@@ -70,7 +70,6 @@ export const htmlTemplate = (token) => {
               <table border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" bgcolor="#7c3aed" style="border-radius: 6px;">
-                    <!-- ✅ Uses BASE_URL env var so the link works in dev & production -->
                     <a href="${process.env.BASE_URL}/verify/${token}" target="_blank"
                        style="display: inline-block; padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">
                       Verify Email
@@ -108,12 +107,10 @@ export const htmlTemplate = (token) => {
   </table>
 </body>
 </html>`;
-};
+  }
 
-
-// ── 2. VERIFICATION SUCCESS PAGE ──────────────────────────────────────────────
-export const verificationSuccessTemplate = () => {
-  return `<!DOCTYPE html>
+  static verificationSuccess() {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -133,28 +130,21 @@ export const verificationSuccessTemplate = () => {
       min-height: 100vh;
       overflow: hidden;
     }
-
-    /* Animated background glow */
     body::before {
       content: '';
       position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 600px;
-      height: 600px;
+      top: 50%; left: 50%;
+      width: 600px; height: 600px;
       background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.05) 40%, transparent 70%);
       transform: translate(-50%, -50%);
       pointer-events: none;
       animation: pulse 4s ease-in-out infinite;
     }
-
     @keyframes pulse {
       0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
       50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
     }
-
     .container { max-width: 560px; width: 90%; margin: 40px auto; position: relative; z-index: 1; }
-
     .card {
       background-color: #1e1b2e;
       border-radius: 10px;
@@ -164,20 +154,10 @@ export const verificationSuccessTemplate = () => {
       box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
       animation: fadeInUp 0.8s ease-out 0.15s both;
     }
-
     .card-header { padding: 36px 24px 0; text-align: center; }
-
-    .brand {
-      display: inline-block;
-      font-size: 26px; font-weight: 900;
-      color: #7c3aed; letter-spacing: 3px;
-      margin-bottom: 24px;
-    }
-
+    .brand { display: inline-block; font-size: 26px; font-weight: 900; color: #7c3aed; letter-spacing: 3px; margin-bottom: 24px; }
     h1 { margin: 0 0 12px; font-size: 28px; font-weight: 700; color: #ffffff; }
-
     .card-body { padding: 24px; font-size: 16px; line-height: 26px; text-align: center; color: #d0d0e0; }
-
     .check-icon {
       display: block; width: 80px; height: 80px;
       margin: 0 auto 24px;
@@ -195,7 +175,6 @@ export const verificationSuccessTemplate = () => {
       top: 50%; left: 50%;
       transform: translate(-50%, -60%) rotate(-45deg);
     }
-
     .button {
       display: inline-block;
       padding: 16px 40px;
@@ -208,32 +187,10 @@ export const verificationSuccessTemplate = () => {
       transition: background-color 0.3s ease, transform 0.2s ease;
     }
     .button:hover { background-color: #5b21b6; transform: translateY(-1px); }
-
-    .card-footer {
-      padding: 20px 24px;
-      font-size: 14px;
-      color: #606070;
-      text-align: center;
-      background-color: #0f0f0f;
-    }
-
-    .divider {
-      width: 60px; height: 3px;
-      background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent);
-      margin: 16px auto;
-      border-radius: 2px;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.5); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-
+    .card-footer { padding: 20px 24px; font-size: 14px; color: #606070; text-align: center; background-color: #0f0f0f; }
+    .divider { width: 60px; height: 3px; background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent); margin: 16px auto; border-radius: 2px; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
     @media screen and (max-width: 600px) { .container { width: 92%; } }
   </style>
 </head>
@@ -257,12 +214,10 @@ export const verificationSuccessTemplate = () => {
   </div>
 </body>
 </html>`;
-};
+  }
 
-
-// ── VERIFICATION FAILED PAGE ──────────────────────────────────────────────────
-export const verificationFailedTemplate = () => {
-  return `<!DOCTYPE html>
+  static verificationFailed() {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -282,28 +237,21 @@ export const verificationFailedTemplate = () => {
       min-height: 100vh;
       overflow: hidden;
     }
-
-    /* Animated background glow */
     body::before {
       content: '';
       position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 600px;
-      height: 600px;
+      top: 50%; left: 50%;
+      width: 600px; height: 600px;
       background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, rgba(139, 92, 246, 0.05) 40%, transparent 70%);
       transform: translate(-50%, -50%);
       pointer-events: none;
       animation: pulse 4s ease-in-out infinite;
     }
-
     @keyframes pulse {
       0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+      50%       { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
     }
-
     .container { max-width: 560px; width: 90%; margin: 40px auto; position: relative; z-index: 1; }
-
     .card {
       background-color: #1e1b2e;
       border-radius: 10px;
@@ -313,25 +261,10 @@ export const verificationFailedTemplate = () => {
       box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
       animation: fadeInUp 0.8s ease-out 0.15s both;
     }
-
     .card-header { padding: 36px 24px 0; text-align: center; }
-
-    .brand {
-      display: inline-block;
-      font-size: 26px; font-weight: 900;
-      color: #7c3aed; letter-spacing: 3px;
-      margin-bottom: 24px;
-    }
-
+    .brand { display: inline-block; font-size: 26px; font-weight: 900; color: #7c3aed; letter-spacing: 3px; margin-bottom: 24px; }
     h1 { margin: 0 0 12px; font-size: 28px; font-weight: 700; color: #ffffff; }
-
-    .card-body {
-      padding: 24px; font-size: 16px;
-      line-height: 26px; text-align: center;
-      color: #d0d0e0;
-    }
-
-    /* Error X icon */
+    .card-body { padding: 24px; font-size: 16px; line-height: 26px; text-align: center; color: #d0d0e0; }
     .error-icon {
       display: block; width: 80px; height: 80px;
       margin: 0 auto 24px;
@@ -340,9 +273,7 @@ export const verificationFailedTemplate = () => {
       position: relative;
       animation: scaleIn 0.5s ease-out 0.4s both;
     }
-
-    .error-icon:before,
-    .error-icon:after {
+    .error-icon:before, .error-icon:after {
       content: '';
       position: absolute;
       width: 32px; height: 4px;
@@ -353,7 +284,6 @@ export const verificationFailedTemplate = () => {
     }
     .error-icon:before { transform: rotate(45deg); }
     .error-icon:after  { transform: rotate(-45deg); }
-
     .button {
       display: inline-block;
       padding: 16px 40px;
@@ -366,32 +296,10 @@ export const verificationFailedTemplate = () => {
       transition: background-color 0.3s ease, transform 0.2s ease;
     }
     .button:hover { background-color: #5b21b6; transform: translateY(-1px); }
-
-    .card-footer {
-      padding: 20px 24px;
-      font-size: 14px;
-      color: #606070;
-      text-align: center;
-      background-color: #0f0f0f;
-    }
-
-    .divider {
-      width: 60px; height: 3px;
-      background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent);
-      margin: 16px auto;
-      border-radius: 2px;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes scaleIn {
-      from { opacity: 0; transform: scale(0.5); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-
+    .card-footer { padding: 20px 24px; font-size: 14px; color: #606070; text-align: center; background-color: #0f0f0f; }
+    .divider { width: 60px; height: 3px; background: linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent); margin: 16px auto; border-radius: 2px; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
     @media screen and (max-width: 600px) { .container { width: 92%; } }
   </style>
 </head>
@@ -416,12 +324,10 @@ export const verificationFailedTemplate = () => {
   </div>
 </body>
 </html>`;
-};
+  }
 
-
-// ── 3. CONTACT-US SUPPORT EMAIL ───────────────────────────────────────────────
-export const customerSupportTemplate = ({ name, email, phoneNumber, message }) => `
-<!DOCTYPE html>
+  static customerSupport({ name, email, phoneNumber, message }) {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -439,10 +345,7 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
   </style>
 </head>
 <body style="background-color: #0f0f0f;">
-
   <table border="0" cellpadding="0" cellspacing="0" width="100%">
-
-    <!-- Logo -->
     <tr>
       <td align="center" bgcolor="#0f0f0f">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -454,8 +357,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
-    <!-- Title -->
     <tr>
       <td align="center" bgcolor="#0f0f0f">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -467,8 +368,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
-    <!-- Sender details -->
     <tr>
       <td align="center" bgcolor="#0f0f0f">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -482,8 +381,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
-    <!-- Message body -->
     <tr>
       <td align="center" bgcolor="#0f0f0f">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -496,8 +393,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
-    <!-- Reply button -->
     <tr>
       <td align="center" bgcolor="#0f0f0f">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -518,8 +413,6 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
-    <!-- Footer -->
     <tr>
       <td align="center" bgcolor="#0f0f0f" style="padding: 24px;">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
@@ -532,16 +425,13 @@ export const customerSupportTemplate = ({ name, email, phoneNumber, message }) =
         </table>
       </td>
     </tr>
-
   </table>
 </body>
-</html>
-`;
+</html>`;
+  }
 
-
-// ── 4. OTP EMAIL ──────────────────────────────────────────────────────────────
-export const htmlTemplateOTP = (otp) => {
-  return `<!DOCTYPE html>
+  static otpEmail(otp) {
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -552,33 +442,23 @@ export const htmlTemplateOTP = (otp) => {
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f0f;">
     <tr>
       <td align="center" style="padding: 40px 0;">
-
-        <!-- Container -->
         <table width="560" cellpadding="0" cellspacing="0" border="0"
                style="background-color:#1e1b2e; border-top:3px solid #7c3aed; border-bottom:3px solid #7c3aed; border-radius:10px; overflow:hidden; color:#ffffff;">
-
-          <!-- Logo / Brand -->
           <tr>
             <td align="center" style="padding: 32px 0 8px;">
               <span style="font-size:24px; font-weight:900; color:#7c3aed; letter-spacing:3px;">OOUSHERS</span>
             </td>
           </tr>
-
-          <!-- Title -->
           <tr>
             <td align="center" style="font-size:26px; font-weight:bold; color:#ffffff; padding: 8px 24px 4px;">
               Your One-Time Password
             </td>
           </tr>
-
-          <!-- Subtitle -->
           <tr>
             <td align="center" style="font-size:15px; color:#a0a0b0; padding: 8px 40px 20px; line-height:24px;">
               Use the code below to verify your identity. It expires in <strong style="color:#ffffff;">15 minutes</strong>.
             </td>
           </tr>
-
-          <!-- OTP Code box -->
           <tr>
             <td align="center" style="padding: 0 24px 28px;">
               <table cellpadding="0" cellspacing="0" border="0">
@@ -591,27 +471,22 @@ export const htmlTemplateOTP = (otp) => {
               </table>
             </td>
           </tr>
-
-          <!-- Warning -->
           <tr>
             <td align="center" style="font-size:14px; color:#606070; padding: 0 40px 20px; line-height:22px;">
               If you didn't request this code, please ignore this email. Your account remains secure.
             </td>
           </tr>
-
-          <!-- Support -->
           <tr>
             <td align="center" style="font-size:14px; color:#606070; padding-bottom:28px;">
               Need help? <a href="mailto:ooushers@gmail.com" style="color:#7c3aed; text-decoration:none;">ooushers@gmail.com</a>
             </td>
           </tr>
-
         </table>
-
       </td>
     </tr>
   </table>
 
 </body>
 </html>`;
-};
+  }
+}

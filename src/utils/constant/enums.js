@@ -12,6 +12,43 @@ export const status = {
 };
 Object.freeze(status);
 
+export const eventStatus = {
+  OPEN: 'open',
+  CONFIRMED: 'confirmed',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+};
+Object.freeze(eventStatus);
+
+export const applicationStatus = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'rejected',
+  EXCUSED: 'excused',
+};
+Object.freeze(applicationStatus);
+
+export const attendanceStatus = {
+  PRESENT: 'present',
+  ABSENT: 'absent',
+  LATE: 'late',
+};
+Object.freeze(attendanceStatus);
+
+export const referralStatus = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  DECLINED: 'declined',
+};
+Object.freeze(referralStatus);
+
+export const genderPreference = {
+  MALE: 'male',
+  FEMALE: 'female',
+  ANY: 'any',
+};
+Object.freeze(genderPreference);
+
 export const language = {
   ARABIC: 'arabic',
   ENGLISH: 'english',

@@ -1,13 +1,14 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { connectDB, sequelize } from '../db/connection.js';
-import { verifyToken } from './utils/token.js';
-import { verificationSuccessTemplate, verificationFailedTemplate } from './utils/htmlTemplate.js';
-import { globalErrorHandler } from './utils/appError.js';
+import { TokenService } from './utils/token.js';
+import { HtmlTemplateService } from './utils/htmlTemplate.js';
+import { ErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
 dotenv.config({ path: path.resolve('./.env') });
+
 export const initApp = async (app, express) => {
   app.use(express.static('public'));
   app.use(express.json());
@@ -25,19 +26,21 @@ export const initApp = async (app, express) => {
 
   app.get('/verify/:token', async (req, res) => {
     try {
-      const payload = verifyToken({ token: req.params.token });
+      const payload = TokenService.verifyToken({ token: req.params.token });
 
       await User.update({ isEmailVerified: true }, { where: { email: payload.email } });
 
       // Send the HTML verification success page
-      res.status(200).send(verificationSuccessTemplate());
+      res.status(200).send(HtmlTemplateService.verificationSuccess());
     } catch (err) {
       // Send the HTML verification failed page
-      res.status(401).send(verificationFailedTemplate());
+      res.status(401).send(HtmlTemplateService.verificationFailed());
     }
   });
 
-  app.use('/auth', allRouters.authRouter)
-  app.use(globalErrorHandler);
+  app.use('/auth', allRouters.authRouter);
+  app.use('/usher', allRouters.usherRouter);
+  app.use('/organizer', allRouters.organizerRouter);
+  app.use('/admin', allRouters.adminRouter);
+  app.use(ErrorHandler.globalErrorHandler);
 };
-

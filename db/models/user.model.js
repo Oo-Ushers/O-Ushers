@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../connection.js';
-import { eventCategories, language, roles } from '../../src/utils/constant/enums.js';
+import { eventCategories, language, roles, status } from '../../src/utils/constant/enums.js';
 
 export const User = sequelize.define(
   'User',
@@ -129,6 +129,22 @@ export const User = sequelize.define(
     rate: {
       type: DataTypes.FLOAT,
       allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(status)),
+      defaultValue: 'pending',
+    },
+    isBlocked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    lateExcuseCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    consecutiveGoodEvents: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
     },
   },
   {

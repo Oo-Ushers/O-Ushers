@@ -1,40 +1,48 @@
 import { User } from '../../db/index.js';
 import { AppError } from '../utils/appError.js';
-import { verifyToken } from '../utils/token.js';
+import { TokenService } from '../utils/token.js';
 
-export const isAuthenticated = () => {
-  return async (req, res, next) => {
-    const { token } = req.headers;
-    if (!token) {
-      return next(new AppError('Token Required', 401));
-    }
+export class AuthMiddleware {
+  static isAuthenticated() {
+    return async (req, res, next) => {
+      //  updateeeeee
+      let { token, authorization } = req.headers;
 
-    try {
-      const payload = verifyToken({ token });
-      if (!payload?.id) {
-        return next(new AppError('Invalid payload', 401));
+      if (!token && authorization) {
+        token = authorization.startsWith('Bearer ') ? authorization.split(' ')[1] : authorization;
       }
 
-      const user = await User.findByPk(payload.id);
-      if (!user) {
-        return next(new AppError('User Not Found', 401));
-      }
+      try {
+        const payload = TokenService.verifyToken({ token });
+        if (!payload?.id) {
+          return next(new AppError('Invalid payload', 401));
+        }
 
-      // Set the authenticated user in req
-      req.authUser = user;
+        const user = await User.findByPk(payload.id);
+        if (!user) {
+          return next(new AppError('User Not Found', 401));
+        }
+
+        // BR-10: Blocked users cannot access the platform
+        if (user.isBlocked) {
+          return next(new AppError('Your account has been blocked', 403));
+        }
+
+        req.authUser = user;
+        next();
+      } catch (error) {
+        return next(new AppError('Authentication Failed', 401));
+      }
+    };
+  }
+
+  static isAuthorized(roles = []) {
+    return async (req, res, next) => {
+      const user = req.authUser;
+      if (!roles.includes(user.role)) {
+        return next(new AppError('not authorized', 401));
+      }
       next();
-    } catch (error) {
-      return next(new AppError('Authentication Failed', 401));
-    }
-  };
-};
-
-export const isAuthorized = (roles = []) => {
-  return async (req, res, next) => {
-    const user = req.authUser;
-    if (!roles.includes(user.role)) {
-      return next(new AppError('not authorized', 401));
-    }
-    next();
-  };
-};
+    };
+  }
+}

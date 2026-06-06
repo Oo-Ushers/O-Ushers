@@ -78,4 +78,17 @@ export class ApiFeature {
   build() {
     return this.queryOptions;
   }
+
+  // Static helper – replaces old pagination.js
+  static paginateResponse(data, page, limit, total) {
+    return {
+      data,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(total),
+        totalPages: Math.ceil(parseInt(total) / parseInt(limit)),
+      },
+    };
+  }
 }

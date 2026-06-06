@@ -15,9 +15,12 @@ export const sequelize = new Sequelize(process.env.PG_URI, {
 
 export const connectDB = async () => {
     try {
+        // Import models to register them with sequelize (needed for sync)
+        await import('../db/index.js');
+
         await sequelize.authenticate();
         await sequelize.sync({
-            // alter: true
+            //  alter: true
         });
         // eslint-disable-next-line no-console
         console.log('\x1b[32m✔ PostgreSQL connected & synced successfully\x1b[0m');

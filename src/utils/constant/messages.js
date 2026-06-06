@@ -29,4 +29,8 @@ export const messages = {
   review: genrateMessage('review'),
   order: genrateMessage('order'),
   coupon: genrateMessage('coupon'),
+  event: genrateMessage('event'),
+  application: genrateMessage('application'),
+  attendance: genrateMessage('attendance'),
+  referral: genrateMessage('referral'),
 };
