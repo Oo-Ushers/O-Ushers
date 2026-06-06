@@ -88,6 +88,12 @@ export const User = sequelize.define(
       type: DataTypes.ARRAY(DataTypes.JSON),
       allowNull: true,
     },
+    // Organizer-specific info (description, website) — stored separately to avoid polluting portfolio
+    organizationInfo: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: null,
+    },
     // portfolio picture avatar default picture
     portfolioPicture: {
       type: DataTypes.JSON,

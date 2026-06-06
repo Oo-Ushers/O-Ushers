@@ -1,6 +1,5 @@
 import joi from 'joi';
-import { eventCategories, genderPreference, applicationStatus, eventStatus } from '../utils/constant/enums.js';
-import { generalFields } from '../middlewares/validation.js';
+import { eventCategories, genderPreference, eventStatus } from '../utils/constant/enums.js';
 
 export class EventValidator {
     static create = joi.object({

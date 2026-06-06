@@ -3,6 +3,7 @@ import { User, Event, Application, Attendance, Review, Referral } from '../../db
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
 import { CloudinaryService } from '../utils/cloudinary.js';
+import { ApiFeature } from '../utils/apiFeature.js';
 import { checkAndAutoVerify } from './usher.controller.js';
 
 export class OrganizerController {
@@ -22,7 +23,7 @@ export class OrganizerController {
         });
     }
 
-    // US-201: Update organizer profile (companyName → fullName, description, location, phone, website)
+    // US-201: Update organizer profile — description & website stored in organizationInfo JSON field
     static async updateMyProfile(req, res, next) {
         const userId = req.authUser.id;
         const { fullName, description, city, mobileNumber, website } = req.body;
@@ -33,13 +34,14 @@ export class OrganizerController {
         if (fullName !== undefined) user.fullName = fullName;
         if (city !== undefined) user.city = city;
         if (mobileNumber !== undefined) user.mobileNumber = mobileNumber;
-        // Store description and website in organizationId field is not right — use notes via portfolio field
-        // The User model uses portfolioPicture for avatar; description/website stored as extra JSON
+
+        // Store organizer-specific fields in the dedicated organizationInfo JSON field
         if (description !== undefined || website !== undefined) {
-            const extra = user.portfolio || [];
-            // Use index 0 as the "company info" slot
-            extra[0] = { ...(extra[0] || {}), description, website };
-            user.portfolio = extra;
+            user.organizationInfo = {
+                ...(user.organizationInfo || {}),
+                ...(description !== undefined ? { description } : {}),
+                ...(website !== undefined ? { website } : {}),
+            };
         }
 
         await user.save();
@@ -120,7 +122,7 @@ export class OrganizerController {
         });
     }
 
-    // US-200: Get own events (with optional status filter)
+    // US-200: Get own events (with optional status filter + ApiFeature pagination)
     static async getMyEvents(req, res, next) {
         const organizerId = req.authUser.id;
         const { status } = req.query;
@@ -128,12 +130,20 @@ export class OrganizerController {
         const where = { organizerId };
         if (status) where.status = status;
 
-        const events = await Event.findAll({ where, order: [['createdAt', 'DESC']] });
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: events } = await Event.findAndCountAll({
+            where,
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
+        });
 
         return res.status(200).json({
             success: true,
             message: messages.event.getsuccessfully,
-            data: events,
+            ...ApiFeature.paginateResponse(events, page, feature.limit, count),
         });
     }
 
@@ -336,7 +346,7 @@ export class OrganizerController {
             eventId: id, reviewerId: organizerId, reviewedUserId: talentId, rating, comment,
         });
 
-        // Recalculate talent's ratingAverage
+        // Recalculate talent's average rating
         const talent = await User.findByPk(talentId);
         if (talent) {
             const allReviews = await Review.findAll({ where: { reviewedUserId: talentId } });
@@ -355,31 +365,30 @@ export class OrganizerController {
         });
     }
 
-    // US-209: Search talent directory
+    // US-209: Search talent directory (with ApiFeature pagination)
     static async searchTalents(req, res, next) {
-        const { city, category, experience, page, size } = req.query;
+        const { city, category, experience } = req.query;
 
         const where = { role: 'usher', isBlocked: false };
         if (city) where.city = { [Op.iLike]: `%${city}%` };
         if (experience) where.experience = { [Op.gte]: parseInt(experience) };
         if (category) where.eventCategories = { [Op.contains]: [category] };
 
-        const limit = parseInt(size) || 10;
-        const offset = ((parseInt(page) || 1) - 1) * limit;
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
 
         const { rows: talents, count } = await User.findAndCountAll({
             where,
             attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
-            limit, offset,
-            order: [['rate', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
+            order: feature.order.length ? feature.order : [['rate', 'DESC']],
         });
 
         return res.status(200).json({
             success: true,
             message: messages.user.getsuccessfully,
-            data: talents, total: count,
-            page: parseInt(page) || 1,
-            pages: Math.ceil(count / limit),
+            ...ApiFeature.paginateResponse(talents, page, feature.limit, count),
         });
     }
 

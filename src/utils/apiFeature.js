@@ -15,9 +15,9 @@ export class ApiFeature {
   pagination() {
     let { page, size } = this.queryData;
     page = parseInt(page) || 1;
-    size = parseInt(size) || 2;
+    size = parseInt(size) || 10;
     if (page <= 0) page = 1;
-    if (size <= 0) size = 2;
+    if (size <= 0) size = 10;
     this.queryOptions.limit = size;
     this.queryOptions.offset = (page - 1) * size;
     return this;

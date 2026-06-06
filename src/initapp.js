@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { connectDB, sequelize } from '../db/connection.js';
 import { TokenService } from './utils/token.js';
 import { HtmlTemplateService } from './utils/htmlTemplate.js';
@@ -8,6 +10,9 @@ import { ErrorHandler } from './utils/appError.js';
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
 dotenv.config({ path: path.resolve('./.env') });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const initApp = async (app, express) => {
   app.use(express.static('public'));
@@ -21,6 +26,18 @@ export const initApp = async (app, express) => {
       return res.status(200).json({ server: true, database: true });
     } catch {
       return res.status(200).json({ server: true, database: false });
+    }
+  });
+
+  // OpenAPI spec endpoint — import this URL directly into APIdog
+  // GET /docs/openapi.json
+  app.get('/docs/openapi.json', (req, res) => {
+    try {
+      const specPath = path.resolve(__dirname, '../docs/openapi.json');
+      const spec = JSON.parse(readFileSync(specPath, 'utf8'));
+      return res.status(200).json(spec);
+    } catch {
+      return res.status(404).json({ success: false, message: 'OpenAPI spec not found. Run: npm run generate:openapi' });
     }
   });
 

@@ -3,6 +3,7 @@ import { User, Event, Application, Attendance, Review, Referral } from '../../db
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
 import { CloudinaryService } from '../utils/cloudinary.js';
+import { ApiFeature } from '../utils/apiFeature.js';
 
 const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
 
@@ -129,9 +130,9 @@ export class UsherController {
         });
     }
 
-    // US-103: Browse available open events with filters
+    // US-103: Browse available open events (with ApiFeature pagination)
     static async browseEvents(req, res, next) {
-        const { category, city, page, size } = req.query;
+        const { category, city } = req.query;
 
         const where = {
             status: 'open',
@@ -140,19 +141,20 @@ export class UsherController {
         if (category) where.category = category;
         if (city) where.location = { [Op.iLike]: `%${city}%` };
 
-        const limit = parseInt(size) || 10;
-        const offset = ((parseInt(page) || 1) - 1) * limit;
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
 
         const { rows: events, count } = await Event.findAndCountAll({
-            where, order: [['eventDate', 'ASC']], limit, offset,
+            where,
+            order: feature.order.length ? feature.order : [['eventDate', 'ASC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
 
         return res.status(200).json({
             success: true,
             message: messages.event.getsuccessfully,
-            data: events, total: count,
-            page: parseInt(page) || 1,
-            pages: Math.ceil(count / limit),
+            ...ApiFeature.paginateResponse(events, page, feature.limit, count),
         });
     }
 
@@ -185,11 +187,14 @@ export class UsherController {
         });
     }
 
-    // US-105: Track my applications & events
+    // US-105: Track my applications & events (with ApiFeature pagination)
     static async getMyApplications(req, res, next) {
         const talentId = req.authUser.id;
-        const { filter } = req.query; // all | upcoming | past
+        const { filter } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const size = parseInt(req.query.size) || 10;
 
+        // Fetch all for in-memory enrichment and date-based filtering
         const applications = await Application.findAll({
             where: { talentId },
             order: [['appliedAt', 'DESC']],
@@ -212,10 +217,13 @@ export class UsherController {
             enriched = enriched.filter(a => a.event && new Date(a.event.eventDate) < now);
         }
 
+        const total = enriched.length;
+        const paginated = enriched.slice((page - 1) * size, page * size);
+
         return res.status(200).json({
             success: true,
             message: messages.event.getsuccessfully,
-            data: enriched,
+            ...ApiFeature.paginateResponse(paginated, page, size, total),
         });
     }
 

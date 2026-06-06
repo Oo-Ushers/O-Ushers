@@ -40,7 +40,7 @@ export class AuthMiddleware {
     return async (req, res, next) => {
       const user = req.authUser;
       if (!roles.includes(user.role)) {
-        return next(new AppError('not authorized', 401));
+        return next(new AppError('Not authorized for this action', 403));
       }
       next();
     };

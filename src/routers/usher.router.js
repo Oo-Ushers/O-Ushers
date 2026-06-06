@@ -3,6 +3,8 @@ import { ErrorHandler } from '../utils/appError.js';
 import { AuthMiddleware } from '../middlewares/authentication.js';
 import { UsherController } from '../controllers/usher.controller.js';
 import { MulterService } from '../utils/multer.cloud.js';
+import { ValidationMiddleware } from '../middlewares/validation.js';
+import { ApplicationValidator } from '../validators/event.validator.js';
 
 export const usherRouter = Router();
 
@@ -16,11 +18,14 @@ usherRouter.put('/profile/update', ...auth, ErrorHandler.asyncHandler(UsherContr
 // US-102: Upload / change profile picture
 usherRouter.patch('/profile/picture', ...auth, upload.single('picture'), ErrorHandler.asyncHandler(UsherController.uploadProfilePicture));
 
+// US-210: View any usher profile by id (shared: usher/admin/organizer)
+usherRouter.get('/profile/:id', ...authShared, ErrorHandler.asyncHandler(UsherController.getUsherProfileById));
+
 // US-103: Browse available events (with ?category= and ?city= filters)
 usherRouter.get('/events/browse', ...auth, ErrorHandler.asyncHandler(UsherController.browseEvents));
 
-// US-104: Apply to an event
-usherRouter.post('/events/apply', ...auth, ErrorHandler.asyncHandler(UsherController.applyToEvent));
+// US-104: Apply to an event (with schema validation)
+usherRouter.post('/events/apply', ...auth, ValidationMiddleware.isValid(ApplicationValidator.apply), ErrorHandler.asyncHandler(UsherController.applyToEvent));
 
 // US-105: Track applications (with ?filter=upcoming|past)
 usherRouter.get('/applications/my', ...auth, ErrorHandler.asyncHandler(UsherController.getMyApplications));
@@ -31,13 +36,10 @@ usherRouter.get('/events/history', ...auth, ErrorHandler.asyncHandler(UsherContr
 // US-107: Excuse from an accepted event
 usherRouter.patch('/applications/:applicationId/excuse', ...auth, ErrorHandler.asyncHandler(UsherController.excuseFromEvent));
 
-// US-109: Refer a talent to an event
-usherRouter.post('/refer', ...auth, ErrorHandler.asyncHandler(UsherController.referTalent));
+// US-109: Refer a talent to an event (with schema validation)
+usherRouter.post('/refer', ...auth, ValidationMiddleware.isValid(ApplicationValidator.refer), ErrorHandler.asyncHandler(UsherController.referTalent));
 
-// US-210: View talent profile by id (shared: usher/admin/organizer can view)
-usherRouter.get('/profile/:id', ...authShared, ErrorHandler.asyncHandler(UsherController.getUsherProfileById));
-
-// US-100: Get own profile (must be last — catches /:id)
+// US-100: Get own profile by id (must be after /profile/:id to avoid conflict)
 usherRouter.get('/:id', ...auth, ErrorHandler.asyncHandler(UsherController.getUsherProfile));
 
 export default usherRouter;

@@ -15,6 +15,6 @@ export class MulterService {
       cb(new Error('Invalid file type'), false);
     };
 
-    return multer({ storage, fileFilter, limits: { fileSize: 50 * 1024 * 1024 } });
+    return multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } }); // 5 MB max
   }
 }

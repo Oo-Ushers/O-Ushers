@@ -7,6 +7,9 @@ import { HashService } from "../utils/hashAndcompare.js";
 import { HtmlTemplateService } from "../utils/htmlTemplate.js";
 import { OtpService } from "../utils/otp.js";
 import { TokenService } from "../utils/token.js";
+import { ApiFeature } from "../utils/apiFeature.js";
+
+const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
 
 export class UserController {
     // signup
@@ -56,22 +59,25 @@ export class UserController {
             portfolio
         }, { transaction });
 
-        newUser.password = undefined;
-
-        // create token and send verification email
+        // Create token and send verification email — rollback if email fails
         const token = TokenService.generateToken({ payload: { email } });
-        await EmailService.sendEmail({
-            to: email,
-            subject: 'Email Confirmation',
-            html: HtmlTemplateService.emailConfirmation(token)
-        });
+        try {
+            await EmailService.sendEmail({
+                to: email,
+                subject: 'Email Confirmation',
+                html: HtmlTemplateService.emailConfirmation(token)
+            });
+        } catch {
+            await transaction.rollback();
+            return next(new AppError('Failed to send verification email. Please try again.', 500));
+        }
 
         await transaction.commit();
 
         return res.status(201).json({
             success: true,
             message: messages.user.createSuccessfully,
-            data: newUser
+            data: newUser  // toJSON() on the model strips the password field
         });
     }
 
@@ -112,7 +118,7 @@ export class UserController {
         });
     }
 
-    // forgetPassword
+    // forgetPassword — OTP is hashed before storing
     static async forgetPassword(req, res, next) {
         const { email } = req.body;
 
@@ -135,10 +141,12 @@ export class UserController {
         }
 
         const otp = OtpService.generateOTP();
+        // Hash the OTP before storing — plain text OTP is only sent via email, never stored
+        const hashedOtp = HashService.hashPassword({ password: otp.toString() });
 
         try {
             await userExist.update({
-                otp: otp,
+                otp: hashedOtp,
                 otpExpiry: new Date(currentTime + 15 * 60 * 1000),
                 otpAttempts: 0,
                 lastOtpRequest: new Date(currentTime)
@@ -147,7 +155,7 @@ export class UserController {
             await EmailService.sendEmail({
                 to: email,
                 subject: 'Forget Password OTP',
-                html: HtmlTemplateService.otpEmail(otp),
+                html: HtmlTemplateService.otpEmail(otp), // raw OTP in email
             });
 
             return res.status(200).json({
@@ -155,7 +163,7 @@ export class UserController {
                 success: true
             });
 
-        } catch (error) {
+        } catch {
             await userExist.update({
                 otp: null,
                 otpExpiry: null,
@@ -166,7 +174,7 @@ export class UserController {
         }
     }
 
-    // verifyOtp
+    // verifyOtp — compares against hashed OTP; returns error if expired (no auto-resend)
     static async verifyOtp(req, res, next) {
         const { otp, email } = req.body;
 
@@ -175,76 +183,44 @@ export class UserController {
             return next(new AppError(messages.user.notfound, 404));
         }
 
-        const otpString = otp.toString();
-        const storedOtpString = user.otp ? user.otp.toString() : '';
         const currentTime = Date.now();
         const otpExpiryTime = user.otpExpiry ? new Date(user.otpExpiry).getTime() : 0;
 
-        if (user.otp && otpExpiryTime > currentTime) {
-            if (storedOtpString !== otpString) {
-                await user.increment('otpAttempts', { by: 1 });
-                await user.reload();
+        // If OTP doesn't exist or has expired — tell user to request a new one
+        if (!user.otp || otpExpiryTime <= currentTime) {
+            return next(new AppError('OTP has expired. Please request a new one via /forget-password.', 400));
+        }
 
-                if (user.otpAttempts >= 3) {
-                    await user.update({
-                        otp: null,
-                        otpExpiry: null,
-                        otpAttempts: 0
-                    });
-                    return next(new AppError('Maximum OTP attempts exceeded. Please request a new OTP.', 403));
-                }
+        // Compare raw OTP against stored bcrypt hash
+        const isValidOtp = HashService.comparePassword({ password: otp.toString(), hashPassword: user.otp });
 
-                return next(new AppError(`Invalid OTP. You have ${3 - user.otpAttempts} attempts left`, 401));
+        if (!isValidOtp) {
+            await user.increment('otpAttempts', { by: 1 });
+            await user.reload();
+
+            if (user.otpAttempts >= 3) {
+                await user.update({
+                    otp: null,
+                    otpExpiry: null,
+                    otpAttempts: 0
+                });
+                return next(new AppError('Maximum OTP attempts exceeded. Please request a new OTP.', 403));
             }
 
-            await user.update({
-                otpAttempts: 0,
-                otp: null,
-                otpExpiry: null,
-                otpVerified: true
-            });
-
-            return res.status(200).json({
-                message: 'OTP verified successfully',
-                success: true
-            });
+            return next(new AppError(`Invalid OTP. You have ${3 - user.otpAttempts} attempts left`, 401));
         }
 
-        const otpCreationTime = otpExpiryTime - (15 * 60 * 1000);
-        const timeSinceLastOTP = currentTime - otpCreationTime;
+        await user.update({
+            otpAttempts: 0,
+            otp: null,
+            otpExpiry: null,
+            otpVerified: true
+        });
 
-        if (timeSinceLastOTP < 30 * 1000) {
-            const remainingTime = Math.ceil((30 * 1000 - timeSinceLastOTP) / 1000);
-            return next(new AppError(`Please wait ${remainingTime} seconds before requesting a new OTP`, 429));
-        }
-
-        const newOtp = OtpService.generateOTP();
-        try {
-            await user.update({
-                otp: newOtp,
-                otpExpiry: new Date(currentTime + 15 * 60 * 1000),
-                otpAttempts: 0,
-                lastOtpRequest: new Date(currentTime)
-            });
-
-            await EmailService.sendEmail({
-                to: email,
-                subject: 'New OTP',
-                html: HtmlTemplateService.otpEmail(newOtp)
-            });
-
-            return res.status(200).json({
-                message: "Previous OTP expired or invalid. A new OTP has been sent to your email",
-                success: true
-            });
-        } catch (error) {
-            await user.update({
-                otp: null,
-                otpExpiry: null,
-                otpAttempts: 0
-            });
-            return next(new AppError('Failed to send new OTP', 500));
-        }
+        return res.status(200).json({
+            message: 'OTP verified successfully',
+            success: true
+        });
     }
 
     // resetPassword
@@ -271,33 +247,38 @@ export class UserController {
         return res.status(200).json({ message: 'Password updated successfully', success: true });
     }
 
-    // getAllUsers
+    // getAllUsers — with pagination via ApiFeature
     static async getAllUsers(req, res, next) {
-        const users = await User.findAll({
-            attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
-            order: [['createdAt', 'DESC']],
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: users } = await User.findAndCountAll({
+            attributes: SAFE_USER_ATTRS,
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
 
         return res.status(200).json({
             success: true,
             message: 'Users fetched successfully',
-            data: users,
+            ...ApiFeature.paginateResponse(users, page, feature.limit, count),
         });
     }
-    // getUsherProfile
-    static async getUsherProfile(req, res, next) {
-        const { id } = req.params;
-        const user = await User.findByPk(id, {
-            attributes: { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
+
+    // getMyProfile — returns the authenticated user's own profile (any role)
+    static async getMyProfile(req, res, next) {
+        const userId = req.authUser.id;
+        const user = await User.findByPk(userId, {
+            attributes: SAFE_USER_ATTRS,
         });
         if (!user) {
             return next(new AppError(messages.user.notfound, 404));
         }
         return res.status(200).json({
             success: true,
-            message: 'User profile fetched successfully',
+            message: 'Profile fetched successfully',
             data: user,
         });
     }
-    
 }

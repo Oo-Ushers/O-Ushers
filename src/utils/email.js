@@ -11,7 +11,7 @@ export class EmailService {
     });
 
     await transporter.sendMail({
-      from: '"Oo-Ushers"',
+      from: `"Oo-Ushers" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,

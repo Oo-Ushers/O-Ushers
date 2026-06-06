@@ -2,12 +2,13 @@ import { Op } from 'sequelize';
 import { User, Event, Application } from '../../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
+import { ApiFeature } from '../utils/apiFeature.js';
 
 const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
 
 export class AdminController {
 
-    // US-301: Get all users — with search & role filter
+    // US-301: Get all users — with search & role filter + ApiFeature pagination
     static async getAllUsers(req, res, next) {
         const { search, role } = req.query;
         const where = {};
@@ -27,40 +28,65 @@ export class AdminController {
             ];
         }
 
-        const users = await User.findAll({
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: users } = await User.findAndCountAll({
             where,
             attributes: SAFE_USER_ATTRS,
-            order: [['createdAt', 'DESC']],
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
 
         return res.status(200).json({
             success: true,
             message: messages.user.getsuccessfully,
-            data: users,
+            ...ApiFeature.paginateResponse(users, page, feature.limit, count),
         });
     }
 
-    // Get all ushers (talent)
+    // Get all ushers (talent) — with ApiFeature pagination
     static async getUshers(req, res, next) {
-        const users = await User.findAll({
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: users } = await User.findAndCountAll({
             where: { role: 'usher' },
             attributes: SAFE_USER_ATTRS,
-            order: [['createdAt', 'DESC']],
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
-        return res.status(200).json({ success: true, message: messages.user.getsuccessfully, data: users });
+
+        return res.status(200).json({
+            success: true,
+            message: messages.user.getsuccessfully,
+            ...ApiFeature.paginateResponse(users, page, feature.limit, count),
+        });
     }
 
-    // Get all organizers (providers)
+    // Get all organizers (providers) — with ApiFeature pagination
     static async getOrganizers(req, res, next) {
-        const users = await User.findAll({
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: users } = await User.findAndCountAll({
             where: { role: 'organizer' },
             attributes: SAFE_USER_ATTRS,
-            order: [['createdAt', 'DESC']],
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
-        return res.status(200).json({ success: true, message: messages.user.getsuccessfully, data: users });
+
+        return res.status(200).json({
+            success: true,
+            message: messages.user.getsuccessfully,
+            ...ApiFeature.paginateResponse(users, page, feature.limit, count),
+        });
     }
 
-    // US-306: Get all events — with search & status filter
+    // US-306: Get all events — with search & status filter + ApiFeature pagination
     static async getEvents(req, res, next) {
         const { search, status } = req.query;
         const where = {};
@@ -74,15 +100,20 @@ export class AdminController {
             ];
         }
 
-        const events = await Event.findAll({
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+
+        const { count, rows: events } = await Event.findAndCountAll({
             where,
-            order: [['createdAt', 'DESC']],
+            order: feature.order.length ? feature.order : [['createdAt', 'DESC']],
+            limit: feature.limit,
+            offset: feature.offset,
         });
 
         return res.status(200).json({
             success: true,
             message: messages.event.getsuccessfully,
-            data: events,
+            ...ApiFeature.paginateResponse(events, page, feature.limit, count),
         });
     }
 

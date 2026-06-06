@@ -18,11 +18,14 @@ export class ValidationMiddleware {
         ...req.params,
         ...req.query,
       };
-      const { error } = schema.validate(data, { abortEarly: true });
+      const { error } = schema.validate(data, {
+        abortEarly: false,   // collect ALL field errors, not just the first
+        stripUnknown: true,  // ignore extra fields without error
+      });
       if (error) {
-        const errArr = [];
-        error.details.forEach((err) => errArr.push(err.message));
-        return next(new AppError(errArr, 400));
+        // Clean Joi's quoted field names: "fullName" is required → fullName is required
+        const messages = error.details.map((d) => d.message.replace(/['"]/g, ''));
+        return next(new AppError(messages.length === 1 ? messages[0] : messages, 400));
       }
       next();
     };

@@ -7,14 +7,12 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 const app = express();
-app.use(cors());
-
-// Optionally, configure CORS with more control
+// Configure CORS
 app.use(
   cors({
-    origin: '*', // Allows all origins
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+    origin: '*', // Allows all origins — restrict to your domain in production
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 );
 
