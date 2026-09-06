@@ -3,6 +3,7 @@ import { User, Event, Application } from '../../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
 import { ApiFeature } from '../utils/apiFeature.js';
+import { HashService } from '../utils/hashAndcompare.js';
 
 const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
 
@@ -256,6 +257,59 @@ export class AdminController {
             success: true,
             message: 'Late excuse counter reset successfully',
             data: { id: user.id, lateExcuseCount: 0, consecutiveGoodEvents: 0 },
+        });
+    }
+
+    // US-309: Admin invite (create) a user with a specific role
+    static async inviteUser(req, res, next) {
+        const { fullName, email, password, role, city, mobileNumber } = req.body;
+
+        const existing = await User.findOne({ where: { email: email.toLowerCase() } });
+        if (existing) return next(new AppError('A user with this email already exists', 400));
+
+        const hashedPassword = HashService.hashPassword({ password: password || 'Password@123' });
+
+        const newUser = await User.create({
+            fullName: fullName || 'New User',
+            userName: `user_${Date.now()}`,
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            mobileNumber: mobileNumber || `admin_invite_${Date.now()}`,
+            city: city || 'N/A',
+            experience: 0,
+            role,
+            rate: 0,
+            isEmailVerified: true,
+            isVerified: false,
+        });
+
+        const { password: _, ...safeData } = newUser.toJSON();
+        return res.status(201).json({
+            success: true,
+            message: messages.user.createSuccessfully,
+            data: safeData,
+        });
+    }
+
+    // US-310: Admin delete a user
+    static async deleteUser(req, res, next) {
+        const { id } = req.params;
+        const adminId = req.authUser.id;
+
+        if (id === adminId) return next(new AppError('You cannot delete your own account', 400));
+
+        const user = await User.findByPk(id);
+        if (!user) return next(new AppError(messages.user.notfound, 404));
+        if (user.role === 'admin') return next(new AppError('Admin accounts cannot be deleted', 403));
+
+        // Cascade: remove applications and attendance linked to this user
+        await Application.destroy({ where: { talentId: id } });
+
+        await user.destroy();
+
+        return res.status(200).json({
+            success: true,
+            message: messages.user.deleteSuccessfully,
         });
     }
 

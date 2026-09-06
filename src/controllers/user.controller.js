@@ -21,6 +21,13 @@ export class UserController {
 
         email = email.toLowerCase();
 
+        const defaultName = email.split('@')[0];
+        if (!fullName) fullName = defaultName;
+        if (!userName) userName = `${defaultName}_${Date.now()}`;
+        if (!mobileNumber) mobileNumber = 'N/A';
+        if (!city) city = 'N/A';
+        if (experience === undefined || experience === null) experience = 0;
+
         if (!portfolioPicture) {
             portfolioPicture = {
                 secure_url: "https://res.cloudinary.com/dvz0zvpof/image/upload/v1727788484/Default_pfp.svg_v7dmtb.png",
@@ -54,9 +61,9 @@ export class UserController {
             portfolioPicture,
             role,
             rate: rate || 0,
-            languages,
-            eventCategories,
-            portfolio
+            languages: languages || [],
+            eventCategories: eventCategories || [],
+            portfolio: portfolio || []
         }, { transaction });
 
         // Create token and send verification email — rollback if email fails
@@ -110,11 +117,13 @@ export class UserController {
             }
         });
 
+        const safeUser = user.toJSON();
+
         return res.status(200).json({
             success: true,
             message: messages.user.loginSuccessfully,
             role: user.role,
-            data: { token }
+            data: { token, user: safeUser }
         });
     }
 

@@ -13,6 +13,9 @@ adminRouter.get('/dashboard', ...auth, ErrorHandler.asyncHandler(AdminController
 // US-301: All users (with ?search= and ?role= filters)
 adminRouter.get('/users', ...auth, ErrorHandler.asyncHandler(AdminController.getAllUsers));
 
+// US-309: Admin invite / create a user with a specific role
+adminRouter.post('/users', ...auth, ErrorHandler.asyncHandler(AdminController.inviteUser));
+
 // Scoped lists
 adminRouter.get('/ushers', ...auth, ErrorHandler.asyncHandler(AdminController.getUshers));
 adminRouter.get('/organizers', ...auth, ErrorHandler.asyncHandler(AdminController.getOrganizers));
@@ -32,6 +35,9 @@ adminRouter.post('/ushers/:id/reset-excuses', ...auth, ErrorHandler.asyncHandler
 
 // Legacy: update user status
 adminRouter.patch('/users/:id/status', ...auth, ErrorHandler.asyncHandler(AdminController.updateUserStatus));
+
+// US-310: Delete user (and cascade their applications)
+adminRouter.delete('/users/:id', ...auth, ErrorHandler.asyncHandler(AdminController.deleteUser));
 
 // US-306: All events (with ?search= and ?status= filters)
 adminRouter.get('/events', ...auth, ErrorHandler.asyncHandler(AdminController.getEvents));

@@ -4,13 +4,13 @@ import { generalFields } from "../middlewares/validation.js";
 
 export class UserValidator {
     static signup = joi.object({
-        fullName: joi.string().min(3).max(50).required(),
-        userName: joi.string().min(3).max(30).required(),
+        fullName: joi.string().min(3).max(50).optional(),
+        userName: joi.string().min(3).max(30).optional(),
         email: generalFields.email.required(),
         password: generalFields.password,
-        mobileNumber: joi.string().pattern(/^(\+?\d{1,3}[- ]?)?\d{10}$/).required(),
-        city: joi.string().required(),
-        experience: joi.number().integer().min(0).required(),
+        mobileNumber: joi.string().pattern(/^(\+?\d{1,3}[- ]?)?\d{10}$/).optional(),
+        city: joi.string().optional(),
+        experience: joi.number().integer().min(0).optional(),
         portfolioPicture: joi.any().default({
             secure_url: "https://res.cloudinary.com/dvz0zvpof/image/upload/v1727788484/Default_pfp.svg_v7dmtb.png",
             public_id: "default_avatar"

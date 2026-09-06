@@ -172,6 +172,7 @@ paths:
                     type: object
                     properties:
                       token: { type: string, description: "Bearer JWT token" }
+                      user: { $ref: '#/components/schemas/User' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -936,6 +937,27 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+    delete:
+      tags: [Organizers]
+      summary: Delete own event (US-NEW)
+      description: |
+        Permanently deletes an event and **all its applications**.
+        Only the owning organizer can delete their event.
+      operationId: deleteOrganizerEvent
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      responses:
+        '200':
+          description: Event deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /organizer/events/{id}/close:
     patch:
       tags: [Organizers]
@@ -1248,6 +1270,432 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /organizer/events/{id}/supervisor:
+    patch:
+      tags: [Organizers]
+      summary: Assign / remove event supervisor (US-NEW)
+      description: |
+        Assigns a supervisor (must be `organizer_supervisor` role and belong to
+        the same company) to an event. Set `supervisorUserId` to `null` to remove.
+      operationId: assignSupervisor
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                supervisorUserId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  example: "abc45f64-1234-4562-b3fc-2c963f66afa6"
+      responses:
+        '200':
+          description: Supervisor assigned / removed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Event' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Staff Management ─────────────────────────────────────────────────────────
+  /organizer/staff:
+    get:
+      tags: [Organizers]
+      summary: Get staff members
+      description: Returns all staff members (member/supervisor) linked to the authenticated organizer.
+      operationId: getStaffMembers
+      responses:
+        '200':
+          description: Staff list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/StaffMember' }
+                      count: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Organizers]
+      summary: Invite staff member
+      description: Creates a new staff member linked to the authenticated organizer's company.
+      operationId: inviteStaffMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, email]
+              properties:
+                fullName:
+                  type: string
+                  example: Mohamed Hassan
+                email:
+                  type: string
+                  format: email
+                  example: staff@company.com
+                password:
+                  type: string
+                  minLength: 6
+                  description: Defaults to `member123` if omitted.
+                role:
+                  type: string
+                  enum: [organizer_member, organizer_supervisor]
+                  default: organizer_member
+      responses:
+        '201':
+          description: Staff member created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/StaffMember' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /organizer/staff/{id}:
+    put:
+      tags: [Organizers]
+      summary: Update staff member
+      description: Updates a staff member's fullName, email, password, or role.
+      operationId: updateStaffMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                fullName: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+                role:
+                  type: string
+                  enum: [organizer_member, organizer_supervisor]
+      responses:
+        '200':
+          description: Staff member updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/StaffMember' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Organizers]
+      summary: Remove staff member
+      operationId: removeStaffMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Staff member removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /organizer/staff/{id}/block:
+    patch:
+      tags: [Organizers]
+      summary: Block staff member
+      operationId: blockStaffMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Staff member blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /organizer/staff/{id}/unblock:
+    patch:
+      tags: [Organizers]
+      summary: Unblock staff member
+      operationId: unblockStaffMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Staff member unblocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── New Usher Endpoints ──────────────────────────────────────────────────────
+  /usher/dashboard:
+    get:
+      tags: [Ushers]
+      summary: Usher dashboard stats (US-NEW)
+      description: Returns key stats for the authenticated usher's dashboard.
+      operationId: getUsherDashboard
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          reliabilityScore: { type: number, example: 95.5 }
+                          ratingAverage: { type: number, example: 4.3 }
+                          totalRatings: { type: integer, example: 12 }
+                          upcomingEventsCount: { type: integer, example: 2 }
+                          completedEventsCount: { type: integer, example: 10 }
+                          pendingApplications: { type: integer, example: 3 }
+                          acceptedApplications: { type: integer, example: 5 }
+                          upcomingEvents:
+                            type: array
+                            items: { $ref: '#/components/schemas/Event' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /usher/referrals/pending:
+    get:
+      tags: [Ushers]
+      summary: Get pending referrals received (US-NEW)
+      description: Returns all pending referrals where the authenticated usher is the referred talent.
+      operationId: getMyPendingReferrals
+      responses:
+        '200':
+          description: Pending referrals
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/Referral'
+                            - type: object
+                              properties:
+                                event: { $ref: '#/components/schemas/Event' }
+                                referrer: { $ref: '#/components/schemas/User' }
+                      count: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /usher/referrals/{referralId}/accept:
+    patch:
+      tags: [Ushers]
+      summary: Accept a referral (US-NEW)
+      description: |
+        Referred talent accepts a pending referral. This creates/updates their
+        application for the event with `referredBy` tagged.
+      operationId: acceptReferral
+      parameters:
+        - name: referralId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Referral accepted, application created/updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Application' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /usher/referrals/{referralId}/decline:
+    patch:
+      tags: [Ushers]
+      summary: Decline a referral (US-NEW)
+      description: Referred talent declines a pending referral.
+      operationId: declineReferral
+      parameters:
+        - name: referralId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Referral declined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /usher/profile/payment-methods:
+    post:
+      tags: [Ushers]
+      summary: Add payment method (US-NEW)
+      description: Adds a new payment method to the usher's profile. First method is auto-set as default.
+      operationId: addPaymentMethod
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, numberOrDetail]
+              properties:
+                provider:
+                  type: string
+                  example: "Vodafone Cash"
+                numberOrDetail:
+                  type: string
+                  example: "01012345678"
+      responses:
+        '201':
+          description: Payment method added
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PaymentMethod' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /usher/profile/payment-methods/{methodId}:
+    delete:
+      tags: [Ushers]
+      summary: Delete payment method (US-NEW)
+      description: Removes a payment method. If the default is deleted, the next method becomes default.
+      operationId: deletePaymentMethod
+      parameters:
+        - name: methodId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Payment method deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PaymentMethod' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /usher/profile/payment-methods/{methodId}/default:
+    patch:
+      tags: [Ushers]
+      summary: Set default payment method (US-NEW)
+      description: Sets a specific payment method as the default; unsets all others.
+      operationId: setDefaultPaymentMethod
+      parameters:
+        - name: methodId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Default updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PaymentMethod' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # ── ADMINS ──────────────────────────────────────────────────────────────────
   /admin/dashboard:
     get:
@@ -1323,6 +1771,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedUsers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admins]
+      summary: Invite / create a user (US-309)
+      description: |
+        Admin creates a user account directly with a specified role. The account
+        is pre-verified (`isEmailVerified: true`). Useful for onboarding staff or
+        organizers without them going through the public registration flow.
+      operationId: adminInviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                fullName:
+                  type: string
+                  example: Sara Ahmed
+                email:
+                  type: string
+                  format: email
+                  example: sara@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  description: Defaults to `Password@123` if omitted.
+                role:
+                  type: string
+                  enum: [usher, organizer, organizer_member, organizer_supervisor, admin]
+                  example: organizer
+                city:
+                  type: string
+                  example: Cairo
+                mobileNumber:
+                  type: string
+                  example: "+201234567890"
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1458,6 +1960,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/users/{id}:
+    delete:
+      tags: [Admins]
+      summary: Delete a user (US-310)
+      description: |
+        Permanently deletes a user and their applications. Business rules:
+        - Cannot delete own admin account.
+        - Cannot delete other admin accounts.
+      operationId: adminDeleteUser
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2266,3 +2795,55 @@ components:
                     properties:
                       event: { $ref: '#/components/schemas/Event' }
                       referredByName: { type: string, nullable: true }
+
+    PaymentMethod:
+      type: object
+      properties:
+        id:
+          type: string
+          description: UUID generated server-side
+          example: "a1b2c3d4-5678-90ab-cdef-1234567890ab"
+        provider:
+          type: string
+          example: "Vodafone Cash"
+        numberOrDetail:
+          type: string
+          example: "01012345678"
+        isDefault:
+          type: boolean
+          example: true
+
+    StaffMember:
+      type: object
+      description: A user with role `organizer_member` or `organizer_supervisor` linked to an organizer.
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+          example: Mohamed Hassan
+        email:
+          type: string
+          format: email
+          example: staff@company.com
+        role:
+          type: string
+          enum: [organizer_member, organizer_supervisor]
+          example: organizer_member
+        isBlocked:
+          type: boolean
+          example: false
+        isVerified:
+          type: boolean
+          example: false
+        providerOwnerId:
+          type: string
+          format: uuid
+          description: ID of the organizer this staff belongs to
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

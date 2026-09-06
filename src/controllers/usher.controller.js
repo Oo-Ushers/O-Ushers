@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import { randomUUID } from 'crypto';
 import { User, Event, Application, Attendance, Review, Referral } from '../../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
@@ -354,6 +355,227 @@ export class UsherController {
             success: true,
             message: 'Talent referred successfully',
             data: referral,
+        });
+    }
+
+    // ─── US-100-EXT: Usher Dashboard Stats ──────────────────────────────────────
+    static async getDashboard(req, res, next) {
+        const talentId = req.authUser.id;
+
+        const [
+            allApplications,
+            acceptedApplications,
+        ] = await Promise.all([
+            Application.findAll({ where: { talentId } }),
+            Application.findAll({ where: { talentId, status: 'accepted' } }),
+        ]);
+
+        const now = new Date();
+        const acceptedEventIds = acceptedApplications.map(a => a.eventId);
+
+        const [upcomingEvents, completedEvents, user] = await Promise.all([
+            acceptedEventIds.length
+                ? Event.findAll({
+                    where: {
+                        id: { [Op.in]: acceptedEventIds },
+                        eventDate: { [Op.gte]: now },
+                        status: { [Op.in]: ['open', 'confirmed'] },
+                    },
+                    order: [['eventDate', 'ASC']],
+                    limit: 5,
+                })
+                : Promise.resolve([]),
+            acceptedEventIds.length
+                ? Event.findAll({
+                    where: {
+                        id: { [Op.in]: acceptedEventIds },
+                        status: 'completed',
+                    },
+                })
+                : Promise.resolve([]),
+            User.findByPk(talentId, { attributes: SAFE_USER_ATTRS }),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Dashboard retrieved successfully',
+            data: {
+                reliabilityScore: user?.reliabilityScore ?? 100,
+                ratingAverage: user?.rate ?? 0,
+                totalRatings: user?.totalRatings ?? 0,
+                upcomingEventsCount: upcomingEvents.length,
+                completedEventsCount: completedEvents.length,
+                pendingApplications: allApplications.filter(a => a.status === 'pending').length,
+                acceptedApplications: acceptedApplications.length,
+                upcomingEvents,
+            },
+        });
+    }
+
+    // ─── US-109-EXT: Get pending referrals received by this usher ───────────────
+    static async getMyPendingReferrals(req, res, next) {
+        const talentId = req.authUser.id;
+
+        const referrals = await Referral.findAll({
+            where: { referredTalentId: talentId, status: 'pending' },
+            order: [['createdAt', 'DESC']],
+        });
+
+        const enriched = await Promise.all(referrals.map(async (ref) => {
+            const event = await Event.findByPk(ref.eventId);
+            const referrer = await User.findByPk(ref.referrerTalentId, {
+                attributes: ['id', 'fullName', 'portfolioPicture', 'city', 'rate'],
+            });
+            return { ...ref.toJSON(), event, referrer };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: 'Pending referrals retrieved successfully',
+            data: enriched.filter(r => r.event && r.referrer),
+            count: enriched.length,
+        });
+    }
+
+    // ─── US-109-EXT: Accept a referral ─────────────────────────────────────────
+    static async acceptReferral(req, res, next) {
+        const { referralId } = req.params;
+        const talentId = req.authUser.id;
+
+        const referral = await Referral.findOne({ where: { id: referralId, referredTalentId: talentId } });
+        if (!referral) return next(new AppError('Referral not found', 404));
+        if (referral.status !== 'pending') return next(new AppError('Referral is no longer pending', 400));
+
+        const event = await Event.findByPk(referral.eventId);
+        if (!event) return next(new AppError(messages.event.notfound, 404));
+        if (event.status !== 'open') return next(new AppError('Event is no longer open', 400));
+
+        // Mark referral accepted
+        referral.status = 'accepted';
+        await referral.save();
+
+        // Decline all other pending referrals for same talent + event
+        await Referral.update(
+            { status: 'declined' },
+            { where: { eventId: referral.eventId, referredTalentId: talentId, status: 'pending', id: { [Op.ne]: referralId } } }
+        );
+
+        // Ensure application exists with referredBy tagged
+        let application = await Application.findOne({ where: { eventId: referral.eventId, talentId } });
+        if (application) {
+            application.referredBy = referral.referrerTalentId;
+            await application.save();
+        } else {
+            application = await Application.create({
+                eventId: referral.eventId,
+                talentId,
+                status: 'pending',
+                isDirect: false,
+                referredBy: referral.referrerTalentId,
+                appliedAt: new Date(),
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Referral accepted. Application submitted for organizer review.',
+            data: application,
+        });
+    }
+
+    // ─── US-109-EXT: Decline a referral ────────────────────────────────────────
+    static async declineReferral(req, res, next) {
+        const { referralId } = req.params;
+        const talentId = req.authUser.id;
+
+        const referral = await Referral.findOne({ where: { id: referralId, referredTalentId: talentId } });
+        if (!referral) return next(new AppError('Referral not found', 404));
+        if (referral.status !== 'pending') return next(new AppError('Referral is no longer pending', 400));
+
+        referral.status = 'declined';
+        await referral.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Referral declined successfully',
+        });
+    }
+
+    // ─── Payment Methods ────────────────────────────────────────────────────────
+    static async addPaymentMethod(req, res, next) {
+        const userId = req.authUser.id;
+        const { provider, numberOrDetail } = req.body;
+
+        const user = await User.findByPk(userId);
+        if (!user) return next(new AppError(messages.user.notfound, 404));
+
+        const methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
+        const newMethod = {
+            id: randomUUID(),
+            provider,
+            numberOrDetail,
+            isDefault: methods.length === 0,
+        };
+
+        methods.push(newMethod);
+        user.paymentMethods = methods;
+        await user.save();
+
+        return res.status(201).json({
+            success: true,
+            message: messages.paymentMethod.createSuccessfully,
+            data: methods,
+        });
+    }
+
+    static async deletePaymentMethod(req, res, next) {
+        const userId = req.authUser.id;
+        const { methodId } = req.params;
+
+        const user = await User.findByPk(userId);
+        if (!user) return next(new AppError(messages.user.notfound, 404));
+
+        let methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
+        const idx = methods.findIndex(m => m.id === methodId);
+        if (idx === -1) return next(new AppError(messages.paymentMethod.notfound, 404));
+
+        const wasDefault = methods[idx].isDefault;
+        methods.splice(idx, 1);
+
+        // Re-assign default if we deleted the default one
+        if (wasDefault && methods.length > 0) {
+            methods[0].isDefault = true;
+        }
+
+        user.paymentMethods = methods;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: messages.paymentMethod.deleteSuccessfully,
+            data: methods,
+        });
+    }
+
+    static async setDefaultPaymentMethod(req, res, next) {
+        const userId = req.authUser.id;
+        const { methodId } = req.params;
+
+        const user = await User.findByPk(userId);
+        if (!user) return next(new AppError(messages.user.notfound, 404));
+
+        let methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
+        const target = methods.find(m => m.id === methodId);
+        if (!target) return next(new AppError(messages.paymentMethod.notfound, 404));
+
+        methods = methods.map(m => ({ ...m, isDefault: m.id === methodId }));
+        user.paymentMethods = methods;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Default payment method updated',
+            data: methods,
         });
     }
 }

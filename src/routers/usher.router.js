@@ -4,7 +4,7 @@ import { AuthMiddleware } from '../middlewares/authentication.js';
 import { UsherController } from '../controllers/usher.controller.js';
 import { MulterService } from '../utils/multer.cloud.js';
 import { ValidationMiddleware } from '../middlewares/validation.js';
-import { ApplicationValidator } from '../validators/event.validator.js';
+import { ApplicationValidator, PaymentMethodValidator } from '../validators/event.validator.js';
 
 export const usherRouter = Router();
 
@@ -12,11 +12,19 @@ const auth = [AuthMiddleware.isAuthenticated(), AuthMiddleware.isAuthorized(['us
 const authShared = [AuthMiddleware.isAuthenticated(), AuthMiddleware.isAuthorized(['usher', 'admin', 'organizer'])];
 const upload = MulterService.cloudUpload();
 
+// US-100-EXT: Dashboard stats
+usherRouter.get('/dashboard', ...auth, ErrorHandler.asyncHandler(UsherController.getDashboard));
+
 // US-101: Update own profile (text fields)
 usherRouter.put('/profile/update', ...auth, ErrorHandler.asyncHandler(UsherController.updateProfile));
 
 // US-102: Upload / change profile picture
 usherRouter.patch('/profile/picture', ...auth, upload.single('picture'), ErrorHandler.asyncHandler(UsherController.uploadProfilePicture));
+
+// Payment methods
+usherRouter.post('/profile/payment-methods', ...auth, ValidationMiddleware.isValid(PaymentMethodValidator.add), ErrorHandler.asyncHandler(UsherController.addPaymentMethod));
+usherRouter.delete('/profile/payment-methods/:methodId', ...auth, ErrorHandler.asyncHandler(UsherController.deletePaymentMethod));
+usherRouter.patch('/profile/payment-methods/:methodId/default', ...auth, ErrorHandler.asyncHandler(UsherController.setDefaultPaymentMethod));
 
 // US-210: View any usher profile by id (shared: usher/admin/organizer)
 usherRouter.get('/profile/:id', ...authShared, ErrorHandler.asyncHandler(UsherController.getUsherProfileById));
@@ -39,7 +47,12 @@ usherRouter.patch('/applications/:applicationId/excuse', ...auth, ErrorHandler.a
 // US-109: Refer a talent to an event (with schema validation)
 usherRouter.post('/refer', ...auth, ValidationMiddleware.isValid(ApplicationValidator.refer), ErrorHandler.asyncHandler(UsherController.referTalent));
 
-// US-100: Get own profile by id (must be after /profile/:id to avoid conflict)
+// US-109-EXT: Manage incoming referrals
+usherRouter.get('/referrals/pending', ...auth, ErrorHandler.asyncHandler(UsherController.getMyPendingReferrals));
+usherRouter.patch('/referrals/:referralId/accept', ...auth, ErrorHandler.asyncHandler(UsherController.acceptReferral));
+usherRouter.patch('/referrals/:referralId/decline', ...auth, ErrorHandler.asyncHandler(UsherController.declineReferral));
+
+// US-100: Get own profile by id (must be after all /profile/* routes)
 usherRouter.get('/:id', ...auth, ErrorHandler.asyncHandler(UsherController.getUsherProfile));
 
 export default usherRouter;
