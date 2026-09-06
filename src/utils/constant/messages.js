@@ -24,4 +24,6 @@ export const messages = {
   application: genrateMessage('application'),
   attendance: genrateMessage('attendance'),
   referral: genrateMessage('referral'),
+  staff: genrateMessage('staff member'),
+  paymentMethod: genrateMessage('payment method'),
 };

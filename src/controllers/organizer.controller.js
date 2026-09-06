@@ -92,10 +92,32 @@ export class OrganizerController {
         const allEvents = await Event.findAll({ where: { organizerId }, attributes: ['hiredTalents'] });
         const totalHired = allEvents.reduce((sum, e) => sum + (e.hiredTalents?.length || 0), 0);
 
+        // Active events (open + confirmed) for display
+        const activeEvents = await Event.findAll({
+            where: { organizerId, status: { [Op.in]: ['open', 'confirmed'] } },
+            order: [['eventDate', 'ASC']],
+        });
+
+        // Count pending applications across organizer's events
+        const eventIds = allEvents.map(e => e.id).filter(Boolean);
+        const pendingApplicationsCount = eventIds.length
+            ? await Application.count({ where: { eventId: { [Op.in]: eventIds }, status: 'pending' } })
+            : 0;
+
         return res.status(200).json({
             success: true,
             message: 'Dashboard retrieved successfully',
-            data: { totalEvents, openEvents, confirmedEvents, completedEvents, totalHired, recentEvents },
+            data: {
+                totalEvents,
+                openEvents,
+                confirmedEvents,
+                completedEvents,
+                activeEventsCount: openEvents + confirmedEvents,
+                totalHired,
+                pendingApplicationsCount,
+                activeEvents,
+                recentEvents,
+            },
         });
     }
 
@@ -446,6 +468,52 @@ export class OrganizerController {
             success: true,
             message: messages.referral.getsuccessfully,
             data: enriched,
+        });
+    }
+
+    // DELETE /organizer/events/:id — organizer deletes own event
+    static async deleteEvent(req, res, next) {
+        const { id } = req.params;
+        const organizerId = req.authUser.id;
+
+        const event = await Event.findOne({ where: { id, organizerId } });
+        if (!event) return next(new AppError(messages.event.notfound, 404));
+
+        await Application.destroy({ where: { eventId: id } });
+        await event.destroy();
+
+        return res.status(200).json({
+            success: true,
+            message: messages.event.deleteSuccessfully,
+        });
+    }
+
+    // PATCH /organizer/events/:id/supervisor — assign / remove supervisor from event
+    static async assignSupervisor(req, res, next) {
+        const { id } = req.params;
+        const organizerId = req.authUser.id;
+        const { supervisorUserId } = req.body;
+
+        const event = await Event.findOne({ where: { id, organizerId } });
+        if (!event) return next(new AppError(messages.event.notfound, 404));
+
+        if (supervisorUserId) {
+            // Validate the supervisor belongs to this organizer's staff
+            const supervisor = await User.findOne({
+                where: { id: supervisorUserId, role: 'organizer_supervisor', providerOwnerId: organizerId },
+            });
+            if (!supervisor) return next(new AppError('Selected user is not a valid supervisor for your company', 400));
+            event.supervisorId = supervisorUserId;
+        } else {
+            event.supervisorId = null;
+        }
+
+        await event.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Supervisor assigned successfully',
+            data: event,
         });
     }
 }

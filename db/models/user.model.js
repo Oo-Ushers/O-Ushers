@@ -152,6 +152,42 @@ export const User = sequelize.define(
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
+    // Talent stats
+    totalRatings: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    completedEventsCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    reliabilityScore: {
+      type: DataTypes.FLOAT,
+      defaultValue: 100,
+    },
+    // Talent preferences
+    refusedCategories: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: [],
+    },
+    availabilityDates: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: [],
+    },
+    // Payment methods (usher-specific)
+    paymentMethods: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: [],
+    },
+    // Staff link: points to the organizer (provider) User.id this staff belongs to
+    providerOwnerId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: { model: 'users', key: 'id' },
+    },
   },
   {
     timestamps: true,

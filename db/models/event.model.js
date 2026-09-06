@@ -74,6 +74,12 @@ export const Event = sequelize.define(
       type: DataTypes.ARRAY(DataTypes.UUID),
       defaultValue: [],
     },
+    // Optional supervisor assigned to this event (must be organizer-staff role)
+    supervisorId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: { model: 'users', key: 'id' },
+    },
   },
   {
     timestamps: true,

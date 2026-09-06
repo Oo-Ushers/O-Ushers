@@ -57,3 +57,26 @@ export class ReviewValidator {
         comment: joi.string().max(500).optional(),
     }).required();
 }
+
+export class StaffValidator {
+    static invite = joi.object({
+        fullName: joi.string().min(2).max(100).required(),
+        email: joi.string().email().required(),
+        password: joi.string().min(6).default('member123'),
+        role: joi.string().valid('organizer_member', 'organizer_supervisor').default('organizer_member'),
+    }).required();
+
+    static update = joi.object({
+        fullName: joi.string().min(2).max(100).optional(),
+        email: joi.string().email().optional(),
+        password: joi.string().min(6).optional(),
+        role: joi.string().valid('organizer_member', 'organizer_supervisor').optional(),
+    }).min(1).required();
+}
+
+export class PaymentMethodValidator {
+    static add = joi.object({
+        provider: joi.string().min(2).max(50).required(),
+        numberOrDetail: joi.string().min(3).max(100).required(),
+    }).required();
+}
