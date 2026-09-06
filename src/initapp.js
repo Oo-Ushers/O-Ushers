@@ -9,6 +9,8 @@ import { ErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
+import swaggerUi from 'swagger-ui-express';
+
 dotenv.config({ path: path.resolve('./.env') });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,7 +31,7 @@ export const initApp = async (app, express) => {
     }
   });
 
-  // OpenAPI spec endpoint — import this URL directly into APIdog
+  // OpenAPI spec endpoint — returns raw JSON spec for APIdog / Postman import
   // GET /docs/openapi.json
   app.get('/docs/openapi.json', (req, res) => {
     try {
@@ -40,6 +42,18 @@ export const initApp = async (app, express) => {
       return res.status(404).json({ success: false, message: 'OpenAPI spec not found. Run: npm run generate:openapi' });
     }
   });
+
+  // Interactive Swagger UI documentation endpoints
+  // GET /docs | GET /api-docs | GET /swagger
+  try {
+    const specPath = path.resolve(__dirname, '../docs/openapi.json');
+    const swaggerDocument = JSON.parse(readFileSync(specPath, 'utf8'));
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  } catch (err) {
+    console.error('Failed to load Swagger UI document:', err.message);
+  }
 
   app.get('/verify/:token', async (req, res) => {
     try {
