@@ -41,5 +41,12 @@ export const Application = sequelize.define(
   {
     timestamps: true,
     tableName: 'applications',
+    indexes: [{ unique: true, fields: ['eventId', 'talentId'] }],
   },
 );
+
+Application.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};

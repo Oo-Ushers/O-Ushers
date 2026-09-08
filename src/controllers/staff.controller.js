@@ -1,17 +1,37 @@
-import { randomUUID } from 'crypto';
 import { Op } from 'sequelize';
-import { User, Event, Application } from '../../db/index.js';
+import { User, Event, Notification } from '../../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
 import { HashService } from '../utils/hashAndcompare.js';
+import { normalizeRole } from '../utils/normalization.js';
+import { NotificationService } from '../services/notification.service.js';
 
 const SAFE_STAFF_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
+const getOrganizerId = (user) => user.role === 'organizer' ? user.id : user.providerOwnerId;
+
+const removeSupervisorAssignments = async (organizerId, supervisorId) => {
+    const assignedEvents = await Event.findAll({
+        where: {
+            organizerId,
+            [Op.or]: [
+                { supervisorId },
+                { supervisorIds: { [Op.contains]: [supervisorId] } },
+            ],
+        },
+    });
+
+    await Promise.all(assignedEvents.map(async (event) => {
+        event.supervisorIds = (event.supervisorIds || []).filter((id) => id !== supervisorId);
+        event.supervisorId = event.supervisorIds[0] || null;
+        await event.save();
+    }));
+};
 
 export class StaffController {
 
     // GET /organizer/staff — list all staff members of this organizer's company
     static async getStaffMembers(req, res, next) {
-        const organizerId = req.authUser.id;
+        const organizerId = getOrganizerId(req.authUser);
 
         const members = await User.findAll({
             where: {
@@ -50,17 +70,26 @@ export class StaffController {
             userName: `${fullName.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
             email: email.toLowerCase(),
             password: hashedPassword,
-            mobileNumber: `staff_${Date.now()}`,   // placeholder — staff can update via profile
-            city: organizer.city || 'N/A',
+            mobileNumber: null,
+            city: organizer.city || null,
             experience: 0,
-            role: role || 'organizer_member',
+            role: normalizeRole(role || 'organizer_member'),
             rate: 0,
             isEmailVerified: true,    // staff are pre-verified by organizer
             isVerified: false,
             providerOwnerId: organizerId,
         });
 
-        const { password: _, ...safeData } = member.toJSON();
+        await NotificationService.create({
+            userId: member.id,
+            title: 'Organization staff account created',
+            message: `You were invited to join ${organizer.fullName} on OO-Ushers.`,
+            type: 'success',
+            link: '/provider/dashboard',
+            sendEmail: false,
+        });
+
+        const safeData = member.toJSON();
 
         return res.status(201).json({
             success: true,
@@ -88,15 +117,19 @@ export class StaffController {
         if (fullName !== undefined) member.fullName = fullName;
         if (password !== undefined) member.password = HashService.hashPassword({ password });
         if (role !== undefined) {
-            if (!['organizer_member', 'organizer_supervisor'].includes(role)) {
+            const normalizedRole = normalizeRole(role);
+            if (!['organizer_member', 'organizer_supervisor'].includes(normalizedRole)) {
                 return next(new AppError('Invalid staff role', 400));
             }
-            member.role = role;
+            if (member.role === 'organizer_supervisor' && normalizedRole !== 'organizer_supervisor') {
+                await removeSupervisorAssignments(organizerId, member.id);
+            }
+            member.role = normalizedRole;
         }
 
         await member.save();
 
-        const { password: _, ...safeData } = member.toJSON();
+        const safeData = member.toJSON();
         return res.status(200).json({
             success: true,
             message: messages.staff.updateSuccessfully,
@@ -114,6 +147,7 @@ export class StaffController {
 
         member.isBlocked = true;
         await member.save();
+        await removeSupervisorAssignments(organizerId, member.id);
 
         return res.status(200).json({
             success: true,
@@ -146,6 +180,8 @@ export class StaffController {
         const member = await User.findOne({ where: { id, providerOwnerId: organizerId } });
         if (!member) return next(new AppError(messages.staff.notfound, 404));
 
+        await removeSupervisorAssignments(organizerId, member.id);
+        await Notification.destroy({ where: { userId: member.id } });
         await member.destroy();
 
         return res.status(200).json({

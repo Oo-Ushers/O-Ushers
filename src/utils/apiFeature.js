@@ -14,10 +14,12 @@ export class ApiFeature {
 
   pagination() {
     let { page, size } = this.queryData;
+    const { limit } = this.queryData;
     page = parseInt(page) || 1;
-    size = parseInt(size) || 10;
+    size = parseInt(size ?? limit) || 10;
     if (page <= 0) page = 1;
     if (size <= 0) size = 10;
+    if (size > 100) size = 100;
     this.queryOptions.limit = size;
     this.queryOptions.offset = (page - 1) * size;
     return this;
@@ -45,7 +47,7 @@ export class ApiFeature {
 
   filter() {
     const queryObj = { ...this.queryData };
-    const excludedFields = ['page', 'sort', 'select', 'size'];
+    const excludedFields = ['page', 'sort', 'select', 'size', 'limit'];
     excludedFields.forEach((field) => delete queryObj[field]);
 
     const sequelizeWhere = {};
@@ -81,13 +83,21 @@ export class ApiFeature {
 
   // Static helper – replaces old pagination.js
   static paginateResponse(data, page, limit, total) {
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+    const parsedTotal = parseInt(total);
+    const totalPages = Math.ceil(parsedTotal / parsedLimit);
     return {
       data,
+      total: parsedTotal,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(total),
-        totalPages: Math.ceil(parseInt(total) / parseInt(limit)),
+        page: parsedPage,
+        limit: parsedLimit,
+        total: parsedTotal,
+        totalPages,
       },
     };
   }

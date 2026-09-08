@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "O-Ushers API",
-    "description": "The **O-Ushers** platform connects event organizers with professional ushers (talents).\n\n## Roles\n| Role | Description |\n|------|-------------|\n| **Usher** | A talent who browses events, applies, and manages their profile |\n| **Organizer** | Posts events, manages applicants, marks attendance & reviews |\n| **Admin** | Platform-level management: users, events, verification |\n\n## Authentication\nAll protected endpoints require a **Bearer JWT** token obtained from `POST /auth/login`.\n\n## Pagination\nPaginated endpoints accept `page` and `size` query parameters and return:\n```json\n{ \"data\": [], \"currentPage\": 1, \"totalPages\": 5, \"totalCount\": 42 }\n```\n",
+    "description": "The **O-Ushers** platform connects event organizers with professional ushers (talents).\n\n## Roles\n| Role | Description |\n|------|-------------|\n| **Usher** | A talent who browses events, applies, and manages their profile |\n| **Organizer** | Posts events, manages applicants, marks attendance & reviews |\n| **Organizer Member** | Uses the organizer workspace without event or staff CRUD access |\n| **Organizer Supervisor** | Uses the organizer workspace and manages event operations |\n| **Admin** | Platform-level management: users, events, verification |\n\n## Authentication\nAll protected endpoints require a **Bearer JWT** token obtained from `POST /auth/login`.\n\n## Pagination\nPaginated endpoints accept `page` and `size` query parameters and return:\n```json\n{ \"data\": [], \"currentPage\": 1, \"totalPages\": 5, \"totalCount\": 42 }\n```\n",
     "version": "1.0.0",
     "contact": {
       "email": "ooushers@gmail.com"
@@ -43,6 +43,10 @@
     {
       "name": "Health",
       "description": "Server and database health checks."
+    },
+    {
+      "name": "Notifications",
+      "description": "Persistent in-app notifications for the authenticated user."
     }
   ],
   "paths": {
@@ -1690,6 +1694,29 @@
       }
     },
     "/organizer/events/{id}/attendance": {
+      "get": {
+        "tags": [
+          "Organizers"
+        ],
+        "summary": "Get event attendance",
+        "operationId": "getEventAttendance",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EventIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance records with usher details"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Organizers"
@@ -1773,6 +1800,29 @@
       }
     },
     "/organizer/events/{id}/reviews": {
+      "get": {
+        "tags": [
+          "Organizers"
+        ],
+        "summary": "Get event reviews",
+        "operationId": "getEventReviews",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EventIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews submitted for this event"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Organizers"
@@ -2124,7 +2174,7 @@
           "Organizers"
         ],
         "summary": "Assign / remove event supervisor (US-NEW)",
-        "description": "Assigns a supervisor (must be `organizer_supervisor` role and belong to\nthe same company) to an event. Set `supervisorUserId` to `null` to remove.\n",
+        "description": "Adds or removes a supervisor (must be `organizer_supervisor` role and\nbelong to the same company) from the event's supervisor list.\n",
         "operationId": "assignSupervisor",
         "parameters": [
           {
@@ -2137,12 +2187,18 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "supervisorUserId"
+                ],
                 "properties": {
                   "supervisorUserId": {
                     "type": "string",
                     "format": "uuid",
-                    "nullable": true,
                     "example": "abc45f64-1234-4562-b3fc-2c963f66afa6"
+                  },
+                  "add": {
+                    "type": "boolean",
+                    "default": true
                   }
                 }
               }
@@ -3685,6 +3741,324 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/usher/events/{id}": {
+      "get": {
+        "tags": [
+          "Ushers"
+        ],
+        "summary": "Get an event available to the current usher",
+        "operationId": "getUsherEvent",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EventIdParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event details"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/usher/talents": {
+      "get": {
+        "tags": [
+          "Ushers"
+        ],
+        "summary": "List complete usher profiles for referrals",
+        "operationId": "listUsherTalents",
+        "responses": {
+          "200": {
+            "description": "Paginated usher profiles"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/usher/profile/{id}/reviews": {
+      "get": {
+        "tags": [
+          "Ushers"
+        ],
+        "summary": "Get reviews for an usher",
+        "operationId": "getUsherReviews",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews with event details"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/organizer/events/{id}/action-requests": {
+      "post": {
+        "tags": [
+          "Organizers"
+        ],
+        "summary": "Request cancellation or deletion of a non-open event",
+        "operationId": "requestEventAction",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EventIdParam"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestType"
+                ],
+                "properties": {
+                  "requestType": {
+                    "type": "string",
+                    "enum": [
+                      "cancel",
+                      "delete"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Request submitted for admin review"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Duplicate pending request or event can be changed directly"
+          }
+        }
+      }
+    },
+    "/organizer/events/{id}/whatsapp-group": {
+      "post": {
+        "tags": [
+          "Organizers"
+        ],
+        "summary": "Create a WhatsApp invitation link for hired ushers",
+        "operationId": "createEventWhatsAppGroup",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EventIdParam"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Invitation link and included/excluded ushers"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Link already exists or no ushers are hired"
+          }
+        }
+      }
+    },
+    "/admin/event-action-requests": {
+      "get": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "List event action requests",
+        "operationId": "getEventActionRequests",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "all"
+              ],
+              "default": "pending"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action requests with organizer and event details"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/admin/event-action-requests/{id}": {
+      "patch": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Approve or reject an event action request",
+        "operationId": "resolveEventActionRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "decision"
+                ],
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request resolved"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Request was already resolved"
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "List current user's notifications",
+        "operationId": "getNotifications",
+        "responses": {
+          "200": {
+            "description": "Up to 100 newest notifications"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Clear current user's notifications",
+        "operationId": "clearNotifications",
+        "responses": {
+          "200": {
+            "description": "Notifications cleared"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark all current user's notifications as read",
+        "operationId": "markAllNotificationsRead",
+        "responses": {
+          "200": {
+            "description": "Notifications marked as read"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark one notification as read",
+        "operationId": "markNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated notification"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"

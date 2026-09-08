@@ -1,5 +1,6 @@
 import { sequelize } from "../../db/connection.js";
 import { User } from "../../db/index.js";
+import { Op } from 'sequelize';
 import { AppError } from "../utils/appError.js";
 import { messages } from "../utils/constant/messages.js";
 import { EmailService } from "../utils/email.js";
@@ -8,25 +9,45 @@ import { HtmlTemplateService } from "../utils/htmlTemplate.js";
 import { OtpService } from "../utils/otp.js";
 import { TokenService } from "../utils/token.js";
 import { ApiFeature } from "../utils/apiFeature.js";
+import { getMissingProfileFields, isProfileComplete } from '../utils/profileCompletion.js';
+import { normalizeEventCategories, normalizeLanguages, normalizeRole } from '../utils/normalization.js';
 
 const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
+
+const withProfileStatus = (user) => {
+    const data = typeof user?.toJSON === 'function' ? user.toJSON() : user;
+    return {
+        ...data,
+        profileCompleted: isProfileComplete(user),
+        missingProfileFields: getMissingProfileFields(user),
+    };
+};
 
 export class UserController {
     // signup
     static async signup(req, res, next) {
-        let {
-            fullName, userName, email, password, mobileNumber, city,
-            experience, portfolioPicture, role, rate, languages, eventCategories, portfolio
-        } = req.body;
+        const { password, rate, languages, eventCategories, portfolio } = req.body;
+        let { fullName, userName, email, mobileNumber, city, experience, portfolioPicture, role } = req.body;
 
         email = email.toLowerCase();
 
         const defaultName = email.split('@')[0];
-        if (!fullName) fullName = defaultName;
+        if (!fullName) fullName = '';
         if (!userName) userName = `${defaultName}_${Date.now()}`;
-        if (!mobileNumber) mobileNumber = 'N/A';
-        if (!city) city = 'N/A';
+        if (!mobileNumber) mobileNumber = null;
+        if (!city) city = null;
         if (experience === undefined || experience === null) experience = 0;
+
+        role = normalizeRole(role);
+
+        const normalizedLanguages = normalizeLanguages(languages || []);
+        const normalizedCategories = normalizeEventCategories(eventCategories || []);
+        if ((languages || []).length !== normalizedLanguages.length) {
+            return next(new AppError('One or more languages are not supported', 400));
+        }
+        if ((eventCategories || []).length !== normalizedCategories.length) {
+            return next(new AppError('One or more event categories are not supported', 400));
+        }
 
         if (!portfolioPicture) {
             portfolioPicture = {
@@ -37,15 +58,20 @@ export class UserController {
 
         const transaction = await sequelize.transaction();
 
+        const duplicateChecks = [{ email }, { userName }];
+        if (mobileNumber) duplicateChecks.push({ mobileNumber });
         const userExist = await User.findOne({
-            where: { email },
-            attributes: ['email'],
+            where: { [Op.or]: duplicateChecks },
+            attributes: ['email', 'userName', 'mobileNumber'],
             transaction
         });
 
         if (userExist) {
             await transaction.rollback();
-            return next(new AppError(messages.user.alreadyExist, 400));
+            const duplicateField = userExist.email === email
+                ? 'email'
+                : userExist.userName === userName ? 'username' : 'mobile number';
+            return next(new AppError(`A user with this ${duplicateField} already exists`, 409));
         }
 
         const hashedpassword = HashService.hashPassword({ password });
@@ -61,8 +87,8 @@ export class UserController {
             portfolioPicture,
             role,
             rate: rate || 0,
-            languages: languages || [],
-            eventCategories: eventCategories || [],
+            languages: normalizedLanguages,
+            eventCategories: normalizedCategories,
             portfolio: portfolio || []
         }, { transaction });
 
@@ -84,14 +110,14 @@ export class UserController {
         return res.status(201).json({
             success: true,
             message: messages.user.createSuccessfully,
-            data: newUser  // toJSON() on the model strips the password field
+            data: withProfileStatus(newUser),
         });
     }
 
     // login
     static async login(req, res, next) {
-        let { email, password } = req.body;
-        email = email.toLowerCase();
+        const { password } = req.body;
+        const email = req.body.email.toLowerCase();
 
         const user = await User.findOne({ where: { email } });
 
@@ -109,6 +135,10 @@ export class UserController {
             return next(new AppError(messages.user.notverified, 401));
         }
 
+        if (user.isBlocked) {
+            return next(new AppError('Your account has been blocked. Contact an administrator for support.', 403));
+        }
+
         const token = TokenService.generateToken({
             payload: {
                 email,
@@ -117,12 +147,15 @@ export class UserController {
             }
         });
 
-        const safeUser = user.toJSON();
+        const safeUser = withProfileStatus(user);
 
         return res.status(200).json({
             success: true,
             message: messages.user.loginSuccessfully,
             role: user.role,
+            frontendRole: safeUser.frontendRole,
+            token,
+            user: safeUser,
             data: { token, user: safeUser }
         });
     }
@@ -287,7 +320,7 @@ export class UserController {
         return res.status(200).json({
             success: true,
             message: 'Profile fetched successfully',
-            data: user,
+            data: withProfileStatus(user),
         });
     }
 }
