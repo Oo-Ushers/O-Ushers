@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.resolve('./.env') });
+void pg;
 
 export const sequelize = new Sequelize(process.env.PG_URI, {
     dialect: 'postgres',
@@ -19,6 +20,8 @@ export const connectDB = async () => {
         await import('../db/index.js');
 
         await sequelize.authenticate();
+        const { migrateExistingSchema } = await import('./migrate.js');
+        await migrateExistingSchema();
         await sequelize.sync({
             alter: process.env.APP_ENV === 'dev', // auto-alter schema in dev; disable in prod
         });

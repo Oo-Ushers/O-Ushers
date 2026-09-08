@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { ErrorHandler } from '../utils/appError.js';
 import { AuthMiddleware } from '../middlewares/authentication.js';
 import { AdminController } from '../controllers/admin.controller.js';
+import { ValidationMiddleware } from '../middlewares/validation.js';
+import { EventActionRequestValidator, EventValidator } from '../validators/event.validator.js';
+import { AdminUserValidator } from '../validators/user.validator.js';
 
 export const adminRouter = Router();
 
@@ -14,7 +17,7 @@ adminRouter.get('/dashboard', ...auth, ErrorHandler.asyncHandler(AdminController
 adminRouter.get('/users', ...auth, ErrorHandler.asyncHandler(AdminController.getAllUsers));
 
 // US-309: Admin invite / create a user with a specific role
-adminRouter.post('/users', ...auth, ErrorHandler.asyncHandler(AdminController.inviteUser));
+adminRouter.post('/users', ...auth, ValidationMiddleware.isValid(AdminUserValidator.invite), ErrorHandler.asyncHandler(AdminController.inviteUser));
 
 // Scoped lists
 adminRouter.get('/ushers', ...auth, ErrorHandler.asyncHandler(AdminController.getUshers));
@@ -43,9 +46,12 @@ adminRouter.delete('/users/:id', ...auth, ErrorHandler.asyncHandler(AdminControl
 adminRouter.get('/events', ...auth, ErrorHandler.asyncHandler(AdminController.getEvents));
 
 // US-307: Change event status
-adminRouter.patch('/events/:id/status', ...auth, ErrorHandler.asyncHandler(AdminController.updateEventStatus));
+adminRouter.patch('/events/:id/status', ...auth, ValidationMiddleware.isValid(EventValidator.updateStatus), ErrorHandler.asyncHandler(AdminController.updateEventStatus));
 
 // US-308: Delete event (and its applications)
 adminRouter.delete('/events/:id', ...auth, ErrorHandler.asyncHandler(AdminController.deleteEvent));
+
+adminRouter.get('/event-action-requests', ...auth, ErrorHandler.asyncHandler(AdminController.getEventActionRequests));
+adminRouter.patch('/event-action-requests/:id', ...auth, ValidationMiddleware.isValid(EventActionRequestValidator.resolve), ErrorHandler.asyncHandler(AdminController.resolveEventActionRequest));
 
 export default adminRouter;

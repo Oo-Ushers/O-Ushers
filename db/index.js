@@ -5,6 +5,8 @@ import { Application } from './models/application.model.js';
 import { Attendance } from './models/attendance.model.js';
 import { Review } from './models/review.model.js';
 import { Referral } from './models/referral.model.js';
+import { EventActionRequest } from './models/event-action-request.model.js';
+import { Notification } from './models/notification.model.js';
 
 // export all models
-export { User, Event, Application, Attendance, Review, Referral };
+export { User, Event, Application, Attendance, Review, Referral, EventActionRequest, Notification };

@@ -33,5 +33,12 @@ export const Referral = sequelize.define(
   {
     timestamps: true,
     tableName: 'referrals',
+    indexes: [{ fields: ['eventId', 'referredTalentId', 'status'] }],
   },
 );
+
+Referral.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};

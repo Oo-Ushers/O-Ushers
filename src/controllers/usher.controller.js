@@ -5,16 +5,19 @@ import { AppError } from '../utils/appError.js';
 import { messages } from '../utils/constant/messages.js';
 import { CloudinaryService } from '../utils/cloudinary.js';
 import { ApiFeature } from '../utils/apiFeature.js';
+import { getMissingProfileFields, isProfileComplete } from '../utils/profileCompletion.js';
+import { normalizeEventCategories, normalizeEventCategory, normalizeLanguages } from '../utils/normalization.js';
+import { NotificationService } from '../services/notification.service.js';
 
 const SAFE_USER_ATTRS = { exclude: ['password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] };
 
 // FR-VER-01: Auto-verify talent after hitting performance thresholds
-const AUTO_VERIFY_MIN_EVENTS = 5;
+const AUTO_VERIFY_MIN_EVENTS = 10;
 const AUTO_VERIFY_MIN_RATING = 4.0;
 
 async function checkAndAutoVerify(userId) {
     const user = await User.findByPk(userId);
-    if (!user || user.role !== 'usher' || user.isVerified) return;
+    if (!user || user.role !== 'usher') return;
 
     const acceptedApps = await Application.findAll({ where: { talentId: userId, status: 'accepted' } });
     const eventIds = acceptedApps.map(a => a.eventId);
@@ -25,10 +28,17 @@ async function checkAndAutoVerify(userId) {
           })
         : 0;
 
+    const attendanceCount = eventIds.length > 0
+        ? await Attendance.count({ where: { talentId: userId, eventId: { [Op.in]: eventIds } } })
+        : 0;
+
+    user.completedEventsCount = presentCount;
+    user.reliabilityScore = attendanceCount > 0 ? Math.round((presentCount / attendanceCount) * 100) : 100;
+
     if (presentCount >= AUTO_VERIFY_MIN_EVENTS && (user.rate || 0) >= AUTO_VERIFY_MIN_RATING) {
         user.isVerified = true;
-        await user.save();
     }
+    await user.save();
 }
 
 export class UsherController {
@@ -48,7 +58,11 @@ export class UsherController {
         return res.status(200).json({
             success: true,
             message: messages.user.getsuccessfully,
-            data: user,
+            data: {
+                ...user.toJSON(),
+                profileCompleted: isProfileComplete(user),
+                missingProfileFields: getMissingProfileFields(user),
+            },
         });
     }
 
@@ -57,7 +71,10 @@ export class UsherController {
         const { id } = req.params;
 
         const user = await User.findByPk(id, {
-            attributes: { exclude: ['mobileNumber', 'email', 'password', 'role', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified'] },
+            attributes: { exclude: [
+                'mobileNumber', 'whatsappNumber', 'paymentMethods', 'email', 'password', 'role',
+                'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified', 'providerOwnerId',
+            ] },
         });
         if (!user) return next(new AppError(messages.user.notfound, 404));
 
@@ -87,23 +104,70 @@ export class UsherController {
     // US-101: Update own profile
     static async updateProfile(req, res, next) {
         const authUserId = req.authUser.id;
-        const { fullName, city, experience, languages, eventCategories } = req.body;
+        const {
+            fullName,
+            city,
+            experience,
+            experienceYears,
+            languages,
+            eventCategories,
+            categories,
+            workCities,
+            refusedCategories,
+            availabilityDates,
+            mobileNumber,
+            phoneNumber,
+            whatsappNumber,
+            whatsappConsentGiven,
+            portfolio,
+            portfolioImages,
+        } = req.body;
 
         const user = await User.findByPk(authUserId);
         if (!user) return next(new AppError(messages.user.notfound, 404));
 
         if (fullName !== undefined) user.fullName = fullName;
         if (city !== undefined) user.city = city;
-        if (experience !== undefined) user.experience = experience;
-        if (languages !== undefined) user.languages = languages;
-        if (eventCategories !== undefined) user.eventCategories = eventCategories;
+        if (experience !== undefined || experienceYears !== undefined) user.experience = experience ?? experienceYears;
+        if (languages !== undefined) {
+            const normalized = normalizeLanguages(languages);
+            if (normalized.length !== languages.length) return next(new AppError('One or more languages are not supported', 400));
+            user.languages = normalized;
+        }
+        if (eventCategories !== undefined || categories !== undefined) {
+            const requestedCategories = eventCategories ?? categories;
+            const normalized = normalizeEventCategories(requestedCategories);
+            if (normalized.length !== requestedCategories.length) return next(new AppError('One or more event categories are not supported', 400));
+            user.eventCategories = normalized;
+        }
+        if (workCities !== undefined) user.workCities = workCities;
+        if (refusedCategories !== undefined) user.refusedCategories = refusedCategories;
+        if (availabilityDates !== undefined) user.availabilityDates = availabilityDates;
+        if (mobileNumber !== undefined || phoneNumber !== undefined) {
+            const requestedMobile = mobileNumber ?? phoneNumber ?? null;
+            const duplicate = requestedMobile ? await User.findOne({
+                where: { mobileNumber: requestedMobile, id: { [Op.ne]: authUserId } },
+            }) : null;
+            if (duplicate) return next(new AppError('This mobile number is already in use', 409));
+            user.mobileNumber = requestedMobile;
+        }
+        if (whatsappNumber !== undefined) user.whatsappNumber = whatsappNumber || null;
+        if (portfolio !== undefined || portfolioImages !== undefined) user.portfolio = portfolio ?? portfolioImages;
+        if (whatsappConsentGiven !== undefined) {
+            user.whatsappConsentGiven = whatsappConsentGiven;
+            user.whatsappConsentGivenAt = whatsappConsentGiven ? new Date() : null;
+        }
 
         await user.save();
 
         return res.status(200).json({
             success: true,
             message: messages.user.updateSuccessfully,
-            data: user,
+            data: {
+                ...user.toJSON(),
+                profileCompleted: isProfileComplete(user),
+                missingProfileFields: getMissingProfileFields(user),
+            },
         });
     }
 
@@ -127,7 +191,11 @@ export class UsherController {
         return res.status(200).json({
             success: true,
             message: 'Profile picture updated successfully',
-            data: { portfolioPicture: uploaded },
+            data: {
+                portfolioPicture: uploaded,
+                profileCompleted: isProfileComplete(user),
+                missingProfileFields: getMissingProfileFields(user),
+            },
         });
     }
 
@@ -139,7 +207,11 @@ export class UsherController {
             status: 'open',
             applicationDeadline: { [Op.gt]: new Date() },
         };
-        if (category) where.category = category;
+        if (category) {
+            const normalizedCategory = normalizeEventCategory(category);
+            if (!normalizedCategory) return next(new AppError('Invalid event category', 400));
+            where.category = normalizedCategory;
+        }
         if (city) where.location = { [Op.iLike]: `%${city}%` };
 
         const feature = new ApiFeature(req.query).pagination().sort().build();
@@ -156,6 +228,39 @@ export class UsherController {
             success: true,
             message: messages.event.getsuccessfully,
             ...ApiFeature.paginateResponse(events, page, feature.limit, count),
+        });
+    }
+
+    static async getEventById(req, res, next) {
+        const event = await Event.findByPk(req.params.id);
+        if (!event) return next(new AppError(messages.event.notfound, 404));
+
+        if (event.status !== 'open') {
+            const application = await Application.findOne({
+                where: { eventId: event.id, talentId: req.authUser.id },
+            });
+            if (!application) return next(new AppError(messages.event.notfound, 404));
+        }
+
+        return res.status(200).json({ success: true, data: event });
+    }
+
+    static async listTalents(req, res) {
+        const feature = new ApiFeature(req.query).pagination().sort().build();
+        const page = parseInt(req.query.page) || 1;
+        const talents = await User.findAll({
+            where: { role: 'usher', isBlocked: false },
+            attributes: { exclude: [
+                'password', 'otp', 'otpExpiry', 'otpAttempts', 'lastOtpRequest', 'otpVerified',
+                'paymentMethods', 'mobileNumber', 'whatsappNumber', 'email', 'providerOwnerId',
+            ] },
+            order: feature.order.length ? feature.order : [['rate', 'DESC']],
+        });
+        const completeTalents = talents.filter(isProfileComplete);
+        const data = completeTalents.slice(feature.offset, feature.offset + feature.limit);
+        return res.status(200).json({
+            success: true,
+            ...ApiFeature.paginateResponse(data, page, feature.limit, completeTalents.length),
         });
     }
 
@@ -179,6 +284,14 @@ export class UsherController {
 
         const application = await Application.create({
             eventId, talentId, status: 'pending', isDirect: false, appliedAt: new Date(),
+        });
+
+        await NotificationService.create({
+            userId: event.organizerId,
+            title: 'New event application',
+            message: `${req.authUser.fullName} applied to “${event.title}”.`,
+            type: 'info',
+            link: `/provider/events/${event.id}`,
         });
 
         return res.status(201).json({
@@ -304,6 +417,14 @@ export class UsherController {
             await talent.save();
         }
 
+        await NotificationService.create({
+            userId: event.organizerId,
+            title: 'Usher excused from event',
+            message: `${talent.fullName} excused themselves from “${event.title}”.`,
+            type: 'warning',
+            link: `/provider/events/${event.id}`,
+        });
+
         return res.status(200).json({
             success: true,
             message: isLateExcuse
@@ -323,9 +444,23 @@ export class UsherController {
         const event = await Event.findByPk(eventId);
         if (!event) return next(new AppError(messages.event.notfound, 404));
         if (event.status !== 'open') return next(new AppError('Event is not open for referrals', 400));
+        if (new Date() > new Date(event.applicationDeadline)) {
+            return next(new AppError('The application deadline has passed', 400));
+        }
 
         const referredTalent = await User.findOne({ where: { id: referredTalentId, role: 'usher' } });
         if (!referredTalent) return next(new AppError('Referred talent not found', 404));
+
+        if (!req.authUser.isVerified) {
+            return next(new AppError('Only verified ushers can make referrals', 403));
+        }
+
+        const referrerApplication = await Application.findOne({
+            where: { eventId, talentId: referrerTalentId, status: 'accepted' },
+        });
+        if (!referrerApplication) {
+            return next(new AppError('You must be accepted for this event before referring another usher', 403));
+        }
 
         // Cannot refer accepted/rejected (BR-13)
         const existingApp = await Application.findOne({ where: { eventId, talentId: referredTalentId } });
@@ -333,23 +468,37 @@ export class UsherController {
             return next(new AppError('Cannot refer a talent who is already accepted or rejected for this event', 400));
         }
 
-        const existingReferral = await Referral.findOne({ where: { eventId, referredTalentId } });
-        if (existingReferral) return next(new AppError('This talent has already been referred to this event', 400));
+        const existingReferral = await Referral.findOne({
+            where: { eventId, referredTalentId, status: 'pending' },
+        });
+        if (existingReferral) return next(new AppError('This talent already has a pending referral for this event', 400));
+
+        const mutualReferral = await Referral.findOne({
+            where: {
+                eventId,
+                referrerTalentId: referredTalentId,
+                referredTalentId: referrerTalentId,
+                status: 'pending',
+            },
+        });
+        if (mutualReferral) return next(new AppError('A mutual referral is already pending for this event', 400));
 
         const referral = await Referral.create({
             eventId, referrerTalentId, referredTalentId, status: 'pending',
         });
 
-        if (!existingApp) {
-            await Application.create({
-                eventId, talentId: referredTalentId,
-                status: 'pending', isDirect: false,
-                referredBy: referrerTalentId, appliedAt: new Date(),
-            });
-        } else {
+        if (existingApp) {
             existingApp.referredBy = referrerTalentId;
             await existingApp.save();
         }
+
+        await NotificationService.create({
+            userId: referredTalentId,
+            title: 'New event referral',
+            message: `${req.authUser.fullName} referred you to “${event.title}”.`,
+            type: 'info',
+            link: '/talent/dashboard',
+        });
 
         return res.status(201).json({
             success: true,
@@ -449,6 +598,14 @@ export class UsherController {
         const event = await Event.findByPk(referral.eventId);
         if (!event) return next(new AppError(messages.event.notfound, 404));
         if (event.status !== 'open') return next(new AppError('Event is no longer open', 400));
+        if (new Date() > new Date(event.applicationDeadline)) {
+            return next(new AppError('The application deadline has passed', 400));
+        }
+
+        let application = await Application.findOne({ where: { eventId: referral.eventId, talentId } });
+        if (application && application.status !== 'pending') {
+            return next(new AppError('Your application for this event is no longer pending', 409));
+        }
 
         // Mark referral accepted
         referral.status = 'accepted';
@@ -461,7 +618,6 @@ export class UsherController {
         );
 
         // Ensure application exists with referredBy tagged
-        let application = await Application.findOne({ where: { eventId: referral.eventId, talentId } });
         if (application) {
             application.referredBy = referral.referrerTalentId;
             await application.save();
@@ -475,6 +631,14 @@ export class UsherController {
                 appliedAt: new Date(),
             });
         }
+
+        await NotificationService.create({
+            userId: event.organizerId,
+            title: 'Referral accepted',
+            message: `${req.authUser.fullName} accepted a referral and applied to “${event.title}”.`,
+            type: 'info',
+            link: `/provider/events/${event.id}`,
+        });
 
         return res.status(200).json({
             success: true,
@@ -494,6 +658,14 @@ export class UsherController {
 
         referral.status = 'declined';
         await referral.save();
+
+        await NotificationService.create({
+            userId: referral.referrerTalentId,
+            title: 'Referral declined',
+            message: `${req.authUser.fullName} declined your event referral.`,
+            type: 'warning',
+            link: '/talent/events',
+        });
 
         return res.status(200).json({
             success: true,
@@ -516,6 +688,7 @@ export class UsherController {
             numberOrDetail,
             isDefault: methods.length === 0,
         };
+        newMethod._id = newMethod.id;
 
         methods.push(newMethod);
         user.paymentMethods = methods;
@@ -535,8 +708,8 @@ export class UsherController {
         const user = await User.findByPk(userId);
         if (!user) return next(new AppError(messages.user.notfound, 404));
 
-        let methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
-        const idx = methods.findIndex(m => m.id === methodId);
+        const methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
+        const idx = methods.findIndex(m => (m.id || m._id) === methodId);
         if (idx === -1) return next(new AppError(messages.paymentMethod.notfound, 404));
 
         const wasDefault = methods[idx].isDefault;
@@ -565,10 +738,15 @@ export class UsherController {
         if (!user) return next(new AppError(messages.user.notfound, 404));
 
         let methods = Array.isArray(user.paymentMethods) ? [...user.paymentMethods] : [];
-        const target = methods.find(m => m.id === methodId);
+        const target = methods.find(m => (m.id || m._id) === methodId);
         if (!target) return next(new AppError(messages.paymentMethod.notfound, 404));
 
-        methods = methods.map(m => ({ ...m, isDefault: m.id === methodId }));
+        methods = methods.map(m => ({
+            ...m,
+            id: m.id || m._id,
+            _id: m._id || m.id,
+            isDefault: (m.id || m._id) === methodId,
+        }));
         user.paymentMethods = methods;
         await user.save();
 
@@ -577,6 +755,23 @@ export class UsherController {
             message: 'Default payment method updated',
             data: methods,
         });
+    }
+
+    static async getTalentReviews(req, res, next) {
+        const { id } = req.params;
+        const talent = await User.findOne({ where: { id, role: 'usher' }, attributes: ['id'] });
+        if (!talent) return next(new AppError(messages.user.notfound, 404));
+
+        const reviews = await Review.findAll({
+            where: { reviewedUserId: id },
+            order: [['createdAt', 'DESC']],
+        });
+        const data = await Promise.all(reviews.map(async (review) => ({
+            ...review.toJSON(),
+            event: await Event.findByPk(review.eventId),
+        })));
+
+        return res.status(200).json({ success: true, data, count: data.length });
     }
 }
 

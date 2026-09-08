@@ -35,6 +35,7 @@ const readyPromise = initApp(app, express);
 if (process.env.APP_ENV !== 'prod') {
   const port = process.env.PORT || 3000;
   app.listen(port, () => {
+    // eslint-disable-next-line no-console
     console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);
   });
 }

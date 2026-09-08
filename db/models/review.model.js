@@ -37,5 +37,12 @@ export const Review = sequelize.define(
   {
     timestamps: true,
     tableName: 'reviews',
+    indexes: [{ unique: true, fields: ['eventId', 'reviewerId', 'reviewedUserId'] }],
   },
 );
+
+Review.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};

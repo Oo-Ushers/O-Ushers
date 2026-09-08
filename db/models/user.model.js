@@ -37,12 +37,12 @@ export const User = sequelize.define(
     },
     mobileNumber: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true,
     },
     city: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     organizationId: {
       type: DataTypes.ARRAY(DataTypes.UUID),
@@ -55,6 +55,7 @@ export const User = sequelize.define(
     experience: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      defaultValue: 0,
     },
     languages: {
       type: DataTypes.ARRAY(DataTypes.STRING),
@@ -176,6 +177,23 @@ export const User = sequelize.define(
       allowNull: true,
       defaultValue: [],
     },
+    workCities: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: [],
+    },
+    whatsappNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    whatsappConsentGiven: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    whatsappConsentGivenAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     // Payment methods (usher-specific)
     paymentMethods: {
       type: DataTypes.JSONB,
@@ -199,5 +217,36 @@ export const User = sequelize.define(
 User.prototype.toJSON = function () {
   const values = { ...this.get() };
   delete values.password;
+  values._id = values.id;
+  values.userId = values.id;
+  values.frontendRole = {
+    usher: 'talent',
+    organizer: 'provider',
+    organizer_member: 'provider_member',
+    organizer_supervisor: 'provider_supervisor',
+  }[values.role] || values.role;
+
+  if (values.role === 'usher') {
+    values.photo = values.portfolioPicture?.secure_url || '';
+    values.experienceYears = values.experience;
+    values.categories = values.eventCategories || [];
+    values.portfolioImages = (values.portfolio || []).map((item) => item?.secure_url || item);
+    values.phoneNumber = values.mobileNumber;
+    values.ratingAverage = values.rate;
+    values.paymentMethods = (values.paymentMethods || []).map((method) => ({
+      ...method,
+      id: method.id || method._id,
+      _id: method._id || method.id,
+    }));
+  } else if (values.role === 'organizer') {
+    values.companyName = values.fullName;
+    values.logo = values.portfolioPicture?.secure_url || '';
+    values.description = values.organizationInfo?.description || '';
+    values.location = values.city || '';
+    values.phone = values.mobileNumber || '';
+    values.website = values.organizationInfo?.website || '';
+  } else if (['organizer_member', 'organizer_supervisor'].includes(values.role)) {
+    values.providerProfileId = values.providerOwnerId;
+  }
   return values;
 };

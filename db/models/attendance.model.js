@@ -36,5 +36,12 @@ export const Attendance = sequelize.define(
   {
     timestamps: true,
     tableName: 'attendances',
+    indexes: [{ unique: true, fields: ['eventId', 'talentId'] }],
   },
 );
+
+Attendance.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};

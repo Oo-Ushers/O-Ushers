@@ -2,6 +2,8 @@ export const roles = {
   USHER: 'usher',
   ADMIN: 'admin',
   ORGANIZER: 'organizer',
+  ORGANIZER_MEMBER: 'organizer_member',
+  ORGANIZER_SUPERVISOR: 'organizer_supervisor',
 };
 Object.freeze(roles);
 
@@ -49,6 +51,19 @@ export const genderPreference = {
 };
 Object.freeze(genderPreference);
 
+export const eventActionRequestType = {
+  CANCEL: 'cancel',
+  DELETE: 'delete',
+};
+Object.freeze(eventActionRequestType);
+
+export const eventActionRequestStatus = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
+Object.freeze(eventActionRequestStatus);
+
 export const language = {
   ARABIC: 'arabic',
   ENGLISH: 'english',
@@ -56,6 +71,9 @@ export const language = {
   SPANISH: 'spanish',
   GERMAN: 'german',
   ITALIAN: 'italian',
+  RUSSIAN: 'russian',
+  TURKISH: 'turkish',
+  CHINESE_MANDARIN: 'chinese_mandarin',
 };
 Object.freeze(language);
 

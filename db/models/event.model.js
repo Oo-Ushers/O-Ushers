@@ -46,6 +46,14 @@ export const Event = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    gatheringLocation: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    photo: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
     requiredCount: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -53,6 +61,18 @@ export const Event = sequelize.define(
     genderPreference: {
       type: DataTypes.ENUM(...Object.values(genderPreference)),
       defaultValue: 'any',
+    },
+    specifyGenders: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    malesCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    femalesCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     budget: {
       type: DataTypes.FLOAT,
@@ -80,9 +100,32 @@ export const Event = sequelize.define(
       allowNull: true,
       references: { model: 'users', key: 'id' },
     },
+    supervisorIds: {
+      type: DataTypes.ARRAY(DataTypes.UUID),
+      allowNull: false,
+      defaultValue: [],
+    },
+    whatsappGroupId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    whatsappGroupLink: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
     tableName: 'events',
   },
 );
+
+Event.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  values.providerId = values.organizerId;
+  if (values.photo && typeof values.photo === 'object') {
+    values.photo = values.photo.secure_url || values.photo.url || values.photo;
+  }
+  return values;
+};

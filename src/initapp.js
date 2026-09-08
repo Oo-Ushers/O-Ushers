@@ -9,7 +9,6 @@ import { ErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
-import swaggerUi from 'swagger-ui-express';
 
 dotenv.config({ path: path.resolve('./.env') });
 
@@ -323,7 +322,10 @@ export const initApp = async (app, express) => {
 
   app.use('/auth', allRouters.authRouter);
   app.use('/usher', allRouters.usherRouter);
+  app.use('/talent', allRouters.usherRouter);
   app.use('/organizer', allRouters.organizerRouter);
+  app.use('/provider', allRouters.organizerRouter);
   app.use('/admin', allRouters.adminRouter);
+  app.use('/notifications', allRouters.notificationRouter);
   app.use(ErrorHandler.globalErrorHandler);
 };
