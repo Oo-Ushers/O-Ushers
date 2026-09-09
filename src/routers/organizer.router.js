@@ -7,6 +7,7 @@ import { MulterService } from '../utils/multer.cloud.js';
 import { ValidationMiddleware } from '../middlewares/validation.js';
 import { EventValidator, ApplicationValidator, AttendanceValidator, ReviewValidator, StaffValidator, SupervisorValidator, EventActionRequestValidator } from '../validators/event.validator.js';
 import { OrganizerProfileValidator } from '../validators/user.validator.js';
+import { PaymentController } from '../controllers/payment.controller.js';
 
 export const organizerRouter = Router();
 
@@ -78,6 +79,15 @@ organizerRouter.post('/direct-book', ...workspaceAuth, completeProfile, Validati
 organizerRouter.post('/events/:id/action-requests', ...workspaceAuth, completeProfile, ValidationMiddleware.isValid(EventActionRequestValidator.create), ErrorHandler.asyncHandler(OrganizerController.requestEventAction));
 
 organizerRouter.post('/events/:id/whatsapp-group', ...ownerAuth, completeProfile, ErrorHandler.asyncHandler(OrganizerController.createWhatsAppGroup));
+
+// Test-mode Paymob settlement: one collection for all eligible ushers after an event.
+organizerRouter.get('/events/:id/settlement-preview', ...ownerAuth, completeProfile, ErrorHandler.asyncHandler(PaymentController.previewEventSettlement));
+organizerRouter.get('/events/:id/settlement', ...workspaceAuth, ErrorHandler.asyncHandler(PaymentController.getEventSettlement));
+organizerRouter.post('/events/:id/settlement', ...ownerAuth, completeProfile, ErrorHandler.asyncHandler(PaymentController.createEventSettlement));
+organizerRouter.patch('/settlements/:settlementId/lines/:lineId/cash-paid', ...ownerAuth, completeProfile, ErrorHandler.asyncHandler(PaymentController.markCashPaid));
+organizerRouter.get('/payment-cards', ...ownerAuth, ErrorHandler.asyncHandler(PaymentController.listOrganizerCards));
+organizerRouter.delete('/payment-cards/:cardId', ...ownerAuth, ErrorHandler.asyncHandler(PaymentController.removeOrganizerCard));
+organizerRouter.get('/payment-cards/:cardId/verify', ...ownerAuth, ErrorHandler.asyncHandler(PaymentController.verifyStoredCardToken));
 
 // ── Staff Management ────────────────────────────────────────────────────────
 organizerRouter.get('/staff', ...workspaceAuth, ErrorHandler.asyncHandler(StaffController.getStaffMembers));

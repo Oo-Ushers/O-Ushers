@@ -100,12 +100,15 @@ test('all frontend-alignment route groups are registered', async () => {
     }
   }
 
-  assert.equal(routes.size, 76);
+  assert.equal(routes.size, 85);
   assert.ok(routes.has('organizerRouter:GET /events/:id/attendance'));
   assert.ok(routes.has('organizerRouter:POST /events/:id/action-requests'));
   assert.ok(routes.has('adminRouter:PATCH /event-action-requests/:id'));
   assert.ok(routes.has('notificationRouter:PATCH /read-all'));
   assert.ok(routes.has('usherRouter:GET /profile/:id/reviews'));
+  assert.ok(routes.has('organizerRouter:POST /events/:id/settlement'));
+  assert.ok(routes.has('organizerRouter:PATCH /settlements/:settlementId/lines/:lineId/cash-paid'));
+  assert.ok(routes.has('paymentRouter:POST /paymob/webhook'));
 
   const { User, Event } = await import('../db/index.js');
   const userJson = User.build({

@@ -33,7 +33,7 @@ const readyPromise = initApp(app, express);
 
 // In dev, start the Express server, DB connection happens in parallel
 if (process.env.APP_ENV !== 'prod') {
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 4000;
   app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`\x1b[36m🚀 Server is running on port ${port}\x1b[0m`);

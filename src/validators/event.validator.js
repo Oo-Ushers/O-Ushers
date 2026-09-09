@@ -131,8 +131,15 @@ export class SupervisorValidator {
 export class PaymentMethodValidator {
     static add = joi.object({
         provider: joi.string().min(2).max(50).required(),
-        numberOrDetail: joi.string().min(3).max(100).required(),
-    }).required();
+        numberOrDetail: joi.string().min(3).max(100).optional(),
+        type: joi.string().valid('wallet', 'bank').optional(),
+        issuer: joi.string().max(50).optional(),
+        accountHolderName: joi.string().min(2).max(100).optional(),
+        bankCode: joi.string().max(30).optional(),
+        mobileNumber: joi.string().pattern(/^\+?[0-9][0-9\s-]{8,18}$/).optional(),
+        iban: joi.string().min(8).max(50).optional(),
+        accountNumber: joi.string().min(4).max(50).optional(),
+    }).or('numberOrDetail', 'mobileNumber', 'iban', 'accountNumber').required();
 }
 
 export class EventActionRequestValidator {

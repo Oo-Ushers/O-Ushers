@@ -348,5 +348,6 @@ export const initApp = async (app, express) => {
   app.use('/provider', allRouters.organizerRouter);
   app.use('/admin', allRouters.adminRouter);
   app.use('/notifications', allRouters.notificationRouter);
+  app.use('/payments', allRouters.paymentRouter);
   app.use(ErrorHandler.globalErrorHandler);
 };

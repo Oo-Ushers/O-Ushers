@@ -676,7 +676,17 @@ export class UsherController {
     // ─── Payment Methods ────────────────────────────────────────────────────────
     static async addPaymentMethod(req, res, next) {
         const userId = req.authUser.id;
-        const { provider, numberOrDetail } = req.body;
+        const {
+            provider,
+            numberOrDetail,
+            type,
+            issuer,
+            accountHolderName,
+            bankCode,
+            mobileNumber,
+            iban,
+            accountNumber,
+        } = req.body;
 
         const user = await User.findByPk(userId);
         if (!user) return next(new AppError(messages.user.notfound, 404));
@@ -685,7 +695,14 @@ export class UsherController {
         const newMethod = {
             id: randomUUID(),
             provider,
-            numberOrDetail,
+            numberOrDetail: numberOrDetail || mobileNumber || iban || accountNumber,
+            ...(type ? { type } : {}),
+            ...(issuer ? { issuer } : {}),
+            ...(accountHolderName ? { accountHolderName } : {}),
+            ...(bankCode ? { bankCode } : {}),
+            ...(mobileNumber ? { mobileNumber } : {}),
+            ...(iban ? { iban } : {}),
+            ...(accountNumber ? { accountNumber } : {}),
             isDefault: methods.length === 0,
         };
         newMethod._id = newMethod.id;

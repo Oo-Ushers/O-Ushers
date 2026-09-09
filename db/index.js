@@ -7,6 +7,21 @@ import { Review } from './models/review.model.js';
 import { Referral } from './models/referral.model.js';
 import { EventActionRequest } from './models/event-action-request.model.js';
 import { Notification } from './models/notification.model.js';
+import { EventSettlement } from './models/event-settlement.model.js';
+import { SettlementLine } from './models/settlement-line.model.js';
+import { OrganizerCard } from './models/organizer-card.model.js';
 
 // export all models
-export { User, Event, Application, Attendance, Review, Referral, EventActionRequest, Notification };
+export {
+  User,
+  Event,
+  Application,
+  Attendance,
+  Review,
+  Referral,
+  EventActionRequest,
+  Notification,
+  EventSettlement,
+  SettlementLine,
+  OrganizerCard,
+};
