@@ -5,10 +5,11 @@ import { fileURLToPath } from 'url';
 import { connectDB, sequelize } from '../db/connection.js';
 import { TokenService } from './utils/token.js';
 import { HtmlTemplateService } from './utils/htmlTemplate.js';
-import { ErrorHandler } from './utils/appError.js';
+import { AppError, ErrorHandler } from './utils/appError.js';
 // Routes will be imported here as they are created
 import * as allRouters from './index.js'
 import { User } from '../db/models/user.model.js';
+import { seedDemoData } from '../scripts/seed-demo-data.js';
 
 dotenv.config({ path: path.resolve('./.env') });
 
@@ -28,6 +29,26 @@ export const initApp = async (app, express) => {
     } catch {
       return res.status(200).json({ server: true, database: false });
     }
+  });
+
+  app.post('/seed/demo', async (req, res, next) => {
+    const expectedSecret = process.env.DEMO_SEED_SECRET;
+    const providedSecret = req.get('x-seed-secret') || req.query.secret;
+
+    if (!expectedSecret) {
+      return next(new AppError('Demo seeding is not configured for this environment', 403));
+    }
+
+    if (providedSecret !== expectedSecret) {
+      return next(new AppError('Invalid demo seed secret', 401));
+    }
+
+    const result = await seedDemoData();
+    return res.status(200).json({
+      success: true,
+      message: 'Demo data seeded successfully',
+      data: result,
+    });
   });
 
   // Helper to load OpenAPI spec from multiple possible paths (local vs Vercel serverless)

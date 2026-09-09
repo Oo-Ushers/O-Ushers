@@ -332,7 +332,7 @@ const upsertReview = async ({ event, reviewer, reviewed, rating, comment }, tran
   return review;
 };
 
-const seed = async () => {
+export const seedDemoData = async ({ closeConnection = false } = {}) => {
   await sequelize.authenticate();
   await import('../db/index.js');
   await sequelize.sync();
@@ -414,18 +414,25 @@ const seed = async () => {
     }
 
     await transaction.commit();
-    console.log('Demo data seeded successfully.');
-    console.log('Login password for all demo accounts: password123');
-    console.table(demoUsers.map(({ email, role, fullName }) => ({ email, role, name: fullName })));
+    return {
+      users: demoUsers.map(({ email, role, fullName }) => ({ email, role, name: fullName })),
+      password: 'password123',
+    };
   } catch (error) {
     await transaction.rollback();
     throw error;
   } finally {
-    await sequelize.close();
+    if (closeConnection) await sequelize.close();
   }
 };
 
-seed().catch((error) => {
+const isCliRun = process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href;
+
+if (isCliRun) seedDemoData({ closeConnection: true }).then((result) => {
+  console.log('Demo data seeded successfully.');
+  console.log(`Login password for all demo accounts: ${result.password}`);
+  console.table(result.users);
+}).catch((error) => {
   console.error('Failed to seed demo data:', error);
   process.exitCode = 1;
 });
